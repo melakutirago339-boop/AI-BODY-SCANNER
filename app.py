@@ -8,15 +8,12 @@ import base64
 app = Flask(__name__)
 
 mp_pose = mp.solutions.pose
-pose_detector = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=0,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
+
 
 @app.route("/health")
 def health():
@@ -24,6 +21,7 @@ def health():
         "status": "online",
         "application": "AI Body Scanner"
     })
+
 
 @app.route("/api/scan", methods=["POST"])
 def scan():
@@ -54,20 +52,28 @@ def scan():
                 "error": "Invalid image"
             }), 400
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
 
-       results = pose_detector.process(rgb)
+        with mp_pose.Pose(
+            static_image_mode=True,
+            model_complexity=1,
+            min_detection_confidence=0.5
+        ) as pose:
 
-if not results.pose_landmarks:
-    return jsonify({
-        "success": True,
-        "detected": False,
-        "landmarks": 0,
-        "points": [],
-        "posture": "Full body not detected"
-    })
+            results = pose.process(rgb)
 
-points = results.pose_landmarks.landmark
+            if not results.pose_landmarks:
+                return jsonify({
+                    "success": True,
+                    "detected": False,
+                    "landmarks": 0,
+                    "posture": "Full body not detected"
+                })
+
+            points = results.pose_landmarks.landmark
 
             landmarks = []
 
@@ -91,6 +97,7 @@ points = results.pose_landmarks.landmark
 
     except Exception:
         app.logger.exception("Scan failed")
+
         return jsonify({
             "success": False,
             "error": "Server scan failed. Check Render logs."
@@ -98,4 +105,4 @@ points = results.pose_landmarks.landmark
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)

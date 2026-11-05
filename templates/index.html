@@ -127,15 +127,30 @@ button:disabled{opacity:.5}
 </div>
 </section>
 
+
 <section class="panel">
-<h2>Body Measurements</h2>
+<h2>AI Body Measurements</h2>
+
 <div class="result">
-<p>Estimated Height: <strong id="height">Needs calibration</strong></p>
-<p>Shoulder Width: <strong id="shoulder">Needs calibration</strong></p>
-<p>Body Proportions: <strong id="proportions">Not available</strong></p>
+  <label for="knownHeight">Your actual height (cm) – Calibration</label>
+  <input id="knownHeight" type="number" min="100" max="230"
+    placeholder="Example: 175"
+    style="width:100%;padding:12px;margin-top:8px;border:1px solid #ccc;border-radius:8px">
+
+  <p>Height Reference: <strong id="height">Not calibrated</strong></p>
+  <p>Shoulder Width: <strong id="shoulder">Waiting for scan</strong></p>
+  <p>Waist Width (estimated): <strong id="waist">Waiting for scan</strong></p>
+  <p>Hip Width: <strong id="hip">Waiting for scan</strong></p>
+  <p>Body Proportions: <strong id="proportions">Not available</strong></p>
 </div>
+
+<p style="font-size:12px;color:#667">
+  Measurements are approximate estimates, not clinical or tailoring measurements.
+</p>
+
 <button onclick="downloadReport()">Download Report</button>
 </section>
+
 
 </main>
 
@@ -304,35 +319,109 @@ function stopCamera(){
  document.getElementById("status").textContent="Camera stopped.";
 }
 
-async function scanBody(){
+
+function scanBody(){
  if(!latestPose){
-  document.getElementById("status").textContent=
+  document.getElementById("status").textContent =
    "No body detected. Stand fully in front of camera.";
   return;
  }
 
  const p=latestPose;
+ const knownHeight=Number(
+  document.getElementById("knownHeight").value
+ );
+
+ if(!knownHeight || knownHeight<100 || knownHeight>230){
+  document.getElementById("status").textContent =
+   "Enter your actual height between 100 and 230 cm.";
+  return;
+ }
+
+ // MediaPipe landmark confidence check
+ const required=[0,11,12,23,24,27,28];
+
+ for(const i of required){
+  if(!p[i] || (p[i].visibility ?? 0)<0.5){
+   document.getElementById("status").textContent =
+    "Full body not visible. Adjust your camera position.";
+   return;
+  }
+ }
+
+ // Distance between landmarks in normalized image coordinates
+ function distance(a,b){
+  const dx=(p[a].x-p[b].x)*video.videoWidth;
+  const dy=(p[a].y-p[b].y)*video.videoHeight;
+  return Math.sqrt(dx*dx+dy*dy);
+ }
+
+ const shoulderPx=distance(11,12);
+ const hipPx=distance(23,24);
+
+ // Approximate visible body length: nose to ankle midpoint
+ const ankleY=(p[27].y+p[28].y)/2;
+ const bodyPx=Math.abs(ankleY-p[0].y)*video.videoHeight;
+
+ if(bodyPx<100 || shoulderPx<10 || hipPx<10){
+  document.getElementById("status").textContent =
+   "Invalid pose measurements. Please reposition.";
+  return;
+ }
+
+ // Calibration based on entered actual height
+ const cmPerPixel=knownHeight/bodyPx;
+
+ const shoulderCm=shoulderPx*cmPerPixel;
+ const hipCm=hipPx*cmPerPixel;
+
+ // Waist is only a rough interpolated width proxy,
+ // not a directly measured circumference.
+ const waistCm=((shoulderCm+hipCm)/2)*0.85;
+
+ const measurements={
+  height:knownHeight,
+  shoulder:shoulderCm,
+  waist:waistCm,
+  hip:hipCm
+ };
+
+ document.getElementById("height").textContent =
+  knownHeight+" cm (user calibrated)";
+
+ document.getElementById("shoulder").textContent =
+  shoulderCm.toFixed(1)+" cm (estimated)";
+
+ document.getElementById("waist").textContent =
+  waistCm.toFixed(1)+" cm (rough estimate)";
+
+ document.getElementById("hip").textContent =
+  hipCm.toFixed(1)+" cm (estimated)";
+
+ document.getElementById("proportions").textContent =
+  "Shoulder/Hip ratio: "+
+  (shoulderCm/hipCm).toFixed(2);
 
  lastScan={
   success:true,
   detected:true,
   landmarks:p.length,
   posture:analyzePosture(p),
+  measurements:measurements,
+  measurementType:"Approximate front-view estimates",
   points:p.map(point=>({
    x:Number(point.x.toFixed(4)),
    y:Number(point.y.toFixed(4)),
-   visibility:Number(point.visibility.toFixed(4))
-  })),
-  height:"Needs calibration",
-  shoulder:"Needs calibration",
-  proportions:"Pose landmarks available"
+   visibility:Number((point.visibility??0).toFixed(4))
+  }))
  };
 
  document.getElementById("poseStatus").textContent="Completed";
  document.getElementById("visibility").textContent="Detected";
  document.getElementById("landmarks").textContent=p.length;
  document.getElementById("posture").textContent=lastScan.posture;
- document.getElementById("status").textContent="Scan completed successfully.";
+ document.getElementById("status").textContent =
+  "Body measurement scan completed!";
 }
 
 function downloadReport(){

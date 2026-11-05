@@ -1,115 +1,325 @@
 
-let cameraStream = null;
-let startingCamera = false;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Body Scanner</title>
 
-async function startCamera() {
-    if (startingCamera) return;
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#eef3f8;
+ color:#172b4d;
+}
+header{
+ background:#102b4e;
+ color:white;
+ text-align:center;
+ padding:22px;
+}
+main{
+ width:min(950px,94%);
+ margin:25px auto;
+}
+.panel{
+ background:white;
+ padding:20px;
+ margin-bottom:20px;
+ border-radius:14px;
+ box-shadow:0 4px 16px #00000010;
+}
+.camera-box{
+ background:#101b2b;
+ border-radius:12px;
+ min-height:300px;
+ position:relative;
+ overflow:hidden;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+}
+video,canvas{
+ width:100%;
+ height:auto;
+ display:none;
+}
+canvas{
+ position:absolute;
+ top:0;
+ left:0;
+ pointer-events:none;
+}
+#cameraMessage{
+ color:white;
+ text-align:center;
+ padding:25px;
+}
+.controls{
+ display:flex;
+ flex-wrap:wrap;
+ gap:10px;
+ margin-top:15px;
+}
+button{
+ border:0;
+ border-radius:8px;
+ padding:13px 20px;
+ font-weight:bold;
+ cursor:pointer;
+}
+#startButton{background:#087e55;color:white}
+#stopButton{background:#c0392b;color:white}
+#scanButton{background:#1769aa;color:white}
+button:disabled{opacity:.5}
+#status{font-weight:bold;margin-top:15px}
+.result{
+ background:#edf5fc;
+ padding:15px;
+ border-radius:8px;
+ margin-top:10px;
+}
+.notice{
+ background:#fff6df;
+ padding:14px;
+ border-left:4px solid #e5a000;
+ line-height:1.6;
+}
+footer{text-align:center;padding:20px}
+</style>
+</head>
 
-    const video = document.getElementById("camera");
-    const message = document.getElementById("cameraMessage");
-    const status = document.getElementById("status");
-    const startButton = document.getElementById("startButton");
-    const stopButton = document.getElementById("stopButton");
+<body>
 
-    startingCamera = true;
-    startButton.disabled = true;
-    status.textContent = "Status: Connecting camera...";
+<header>
+<h1>AI BODY SCANNER</h1>
+<p>AI Body Posture & Measurement System</p>
+</header>
 
-    try {
-        // Stop any old camera stream first
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-        }
+<main>
 
-        if (!navigator.mediaDevices?.getUserMedia) {
-            throw new Error(
-                "Camera unavailable. Please use HTTPS and allow camera permission."
-            );
-        }
+<section class="panel">
+<h2>Live Camera Scanner</h2>
+<p>Stand in front of your camera with your full body visible.</p>
 
-        // Request desktop webcam or front camera
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: { ideal: "user" },
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
+<div class="camera-box">
+<video id="camera" autoplay playsinline muted></video>
+<canvas id="overlay"></canvas>
 
-        video.srcObject = cameraStream;
-        video.style.display = "block";
-        message.style.display = "none";
+<div id="cameraMessage">
+<h3>Camera Not Started</h3>
+<p>Press Start Camera</p>
+</div>
+</div>
 
-        await video.play();
+<div class="controls">
+<button id="startButton" onclick="startCamera()">Start Camera</button>
+<button id="stopButton" onclick="stopCamera()" disabled>Stop Camera</button>
+<button id="scanButton" onclick="scanBody()" disabled>Scan Body</button>
+</div>
 
-        startButton.disabled = true;
-        stopButton.disabled = false;
+<p id="status">Status: Waiting for camera permission.</p>
+</section>
 
-        status.textContent = "Status: Camera is running.";
+<section class="panel">
+<h2>AI Body Analysis</h2>
 
-        // Detect unexpected camera disconnection
-        cameraStream.getVideoTracks().forEach(track => {
-            track.addEventListener("ended", () => {
-                status.textContent =
-                    "Status: Camera disconnected. Please restart.";
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                video.srcObject = null;
-                video.style.display = "none";
-                message.style.display = "block";
-                cameraStream = null;
-            });
-        });
+<div class="result">
+<p>Pose Detection: <strong id="poseStatus">Waiting</strong></p>
+<p>Body Visibility: <strong id="visibility">Not detected</strong></p>
+<p>Posture: <strong id="posture">Not analyzed</strong></p>
+<p>Landmarks: <strong id="landmarks">0</strong></p>
+</div>
 
-    } catch (error) {
-        console.error("Camera error:", error);
+<button onclick="downloadReport()">Download Report</button>
+</section>
 
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-        }
+<section class="panel">
+<h2>Body Measurements</h2>
+<div class="result">
+<p>Estimated Height: <strong id="height">Not available</strong></p>
+<p>Shoulder Width: <strong id="shoulder">Not available</strong></p>
+<p>Body Proportions: <strong id="proportions">Not available</strong></p>
+</div>
+</section>
 
-        video.srcObject = null;
-        video.style.display = "none";
-        message.style.display = "block";
+<section class="panel">
+<h2>Privacy & Safety</h2>
+<div class="notice">
+Camera access requires your permission.
+Camera images are processed locally in this page.
+Measurements are approximate and require calibration.
+This application is not a medical diagnostic device.
+</div>
+</section>
 
-        startButton.disabled = false;
-        stopButton.disabled = true;
+</main>
 
-        status.textContent = "Camera error: " + error.message;
+<footer>AI Body Scanner | Version 2.0</footer>
 
-    } finally {
-        startingCamera = false;
-    }
+<script>
+let cameraStream=null;
+let startingCamera=false;
+let lastScan=null;
+
+async function startCamera(){
+ if(startingCamera)return;
+
+ const video=document.getElementById("camera");
+ const message=document.getElementById("cameraMessage");
+ const status=document.getElementById("status");
+ const start=document.getElementById("startButton");
+ const stop=document.getElementById("stopButton");
+ const scan=document.getElementById("scanButton");
+
+ startingCamera=true;
+ start.disabled=true;
+ status.textContent="Status: Requesting camera permission...";
+
+ try{
+  if(!navigator.mediaDevices?.getUserMedia){
+   throw new Error("Camera unavailable. Use HTTPS and allow camera access.");
+  }
+
+  if(cameraStream){
+   cameraStream.getTracks().forEach(t=>t.stop());
+  }
+
+  const devices=await navigator.mediaDevices.enumerateDevices();
+  const cameras=devices.filter(d=>d.kind==="videoinput");
+
+  if(!cameras.length){
+   throw new Error("No camera was found on this device.");
+  }
+
+  cameraStream=await navigator.mediaDevices.getUserMedia({
+   video:{
+    facingMode:{ideal:"user"},
+    width:{ideal:1280},
+    height:{ideal:720}
+   },
+   audio:false
+  });
+
+  video.srcObject=cameraStream;
+  video.style.display="block";
+  message.style.display="none";
+
+  await video.play();
+
+  stop.disabled=false;
+  scan.disabled=false;
+  status.textContent="Status: Camera is running.";
+
+  cameraStream.getVideoTracks()[0].addEventListener("ended",()=>{
+   status.textContent="Camera disconnected.";
+   stopCamera();
+  });
+
+ }catch(error){
+  console.error(error);
+  status.textContent="Camera Error: "+error.message;
+  start.disabled=false;
+  stop.disabled=true;
+  scan.disabled=true;
+ }finally{
+  startingCamera=false;
+ }
 }
 
-function stopCamera() {
-    const video = document.getElementById("camera");
-    const message = document.getElementById("cameraMessage");
+function stopCamera(){
+ if(cameraStream){
+  cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream=null;
+ }
 
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
+ const video=document.getElementById("camera");
+ video.pause();
+ video.srcObject=null;
+ video.style.display="none";
 
-    video.pause();
-    video.srcObject = null;
-    video.style.display = "none";
-    message.style.display = "block";
+ document.getElementById("cameraMessage").style.display="block";
+ document.getElementById("startButton").disabled=false;
+ document.getElementById("stopButton").disabled=true;
+ document.getElementById("scanButton").disabled=true;
 
-    document.getElementById("startButton").disabled = false;
-    document.getElementById("stopButton").disabled = true;
-
-    document.getElementById("status").textContent =
-        "Status: Camera stopped.";
+ document.getElementById("status").textContent="Status: Camera stopped.";
 }
 
-// Handle page visibility changes
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden && cameraStream) {
-        document.getElementById("status").textContent =
-            "Status: Camera paused while page is hidden.";
-    }
-});
+async function scanBody(){
+ const status=document.getElementById("status");
+ const video=document.getElementById("camera");
+
+ if(!cameraStream || video.readyState<2){
+  status.textContent="Start the camera first.";
+  return;
+ }
+
+ status.textContent="Status: Sending image for AI analysis...";
+
+ try{
+  const canvas=document.createElement("canvas");
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
+
+  const image=canvas.toDataURL("image/jpeg",0.85);
+
+  const response=await fetch("/api/scan",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({image:image})
+  });
+
+  const data=await response.json();
+
+  if(!response.ok)throw new Error(data.error||"Scan failed");
+
+  lastScan=data;
+
+  document.getElementById("poseStatus").textContent="Completed";
+  document.getElementById("visibility").textContent=
+   data.detected?"Detected":"Not detected";
+  document.getElementById("landmarks").textContent=
+   data.landmarks||0;
+  document.getElementById("posture").textContent=
+   data.posture||"Not available";
+
+  document.getElementById("height").textContent=
+   data.height||"Needs calibration";
+  document.getElementById("shoulder").textContent=
+   data.shoulder||"Needs calibration";
+  document.getElementById("proportions").textContent=
+   data.proportions||"Not available";
+
+  status.textContent="Status: Scan completed.";
+
+ }catch(error){
+  status.textContent="Scan Error: "+error.message;
+ }
+}
+
+function downloadReport(){
+ if(!lastScan){
+  alert("Please complete a scan first.");
+  return;
+ }
+
+ const blob=new Blob(
+  [JSON.stringify(lastScan,null,2)],
+  {type:"application/json"}
+ );
+
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="body-scan-report.json";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

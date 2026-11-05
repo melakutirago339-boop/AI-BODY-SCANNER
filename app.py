@@ -31,13 +31,8 @@ def detect_pose():
 
         file = request.files["image"]
 
-        image_bytes = np.frombuffer(
-            file.read(), np.uint8
-        )
-
-        frame = cv2.imdecode(
-            image_bytes, cv2.IMREAD_COLOR
-        )
+        image_bytes = np.frombuffer(file.read(), np.uint8)
+        frame = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
 
         if frame is None:
             return jsonify({
@@ -76,17 +71,15 @@ def detect_pose():
         return jsonify({
             "success": True,
             "detected": True,
-            "landmarks": landmarks,
-            "total_landmarks": len(landmarks)
+            "landmarks": landmarks
         })
 
-    except Exception as error:
+    except Exception:
         app.logger.exception("Pose detection failed")
         return jsonify({
             "success": False,
-            "error": str(error)
+            "error": "Pose detection failed on server"
         }), 500
-
 
 if __name__ == "__main__":
     app.run(debug=True)

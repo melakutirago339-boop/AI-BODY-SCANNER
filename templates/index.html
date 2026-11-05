@@ -1,240 +1,70 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Body Scanner</title>
+let cameraStream = null;
+let startingCamera = false;
 
-    <style>
-        * {
-            box-sizing: border-box;
+async function startCamera() {
+    if (startingCamera) return;
+
+    const video = document.getElementById("camera");
+    const message = document.getElementById("cameraMessage");
+    const status = document.getElementById("status");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+
+    startingCamera = true;
+    startButton.disabled = true;
+    status.textContent = "Status: Connecting camera...";
+
+    try {
+        // Stop any old camera stream first
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
         }
 
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #eef3f8;
-            color: #172b4d;
+        if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error(
+                "Camera unavailable. Please use HTTPS and allow camera permission."
+            );
         }
 
-        header {
-            background: #102b4e;
-            color: white;
-            padding: 22px 16px;
-            text-align: center;
-        }
+        // Request desktop webcam or front camera
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: "user" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        });
 
-        header h1 {
-            margin: 0 0 8px;
-        }
+        video.srcObject = cameraStream;
+        video.style.display = "block";
+        message.style.display = "none";
 
-        header p {
-            margin: 0;
-            color: #d8e6f5;
-        }
+        await video.play();
 
-        main {
-            width: min(950px, 94%);
-            margin: 25px auto;
-        }
+        startButton.disabled = true;
+        stopButton.disabled = false;
 
-        .panel {
-            background: white;
-            padding: 22px;
-            margin-bottom: 20px;
-            border-radius: 14px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-        }
+        status.textContent = "Status: Camera is running.";
 
-        .camera-box {
-            background: #101b2b;
-            border-radius: 12px;
-            min-height: 280px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        video {
-            display: none;
-            width: 100%;
-            max-height: 520px;
-            object-fit: contain;
-        }
-
-        #cameraMessage {
-            color: white;
-            padding: 25px;
-            text-align: center;
-        }
-
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 18px;
-        }
-
-        button {
-            border: none;
-            border-radius: 8px;
-            padding: 13px 20px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        #startButton {
-            background: #087e55;
-            color: white;
-        }
-
-        #stopButton {
-            background: #c0392b;
-            color: white;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        #status {
-            margin-top: 15px;
-            font-weight: bold;
-            color: #315477;
-        }
-
-        .notice {
-            background: #fff6df;
-            border-left: 4px solid #e5a000;
-            padding: 14px;
-            border-radius: 6px;
-            line-height: 1.6;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #63758b;
-        }
-
-        @media (max-width: 600px) {
-            .panel {
-                padding: 15px;
-            }
-
-            .controls button {
-                flex: 1;
-            }
-
-            .camera-box {
-                min-height: 230px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<header>
-    <h1>AI BODY SCANNER</h1>
-    <p>Camera-Based Body Posture Analysis</p>
-</header>
-
-<main>
-
-    <section class="panel">
-        <h2>Camera Scanner</h2>
-        <p>
-            Use your phone or computer camera to begin a body posture scan.
-        </p>
-
-        <div class="camera-box">
-            <video id="camera" autoplay playsinline muted></video>
-            <div id="cameraMessage">
-                <h3>Camera is not started</h3>
-                <p>Press Start Camera to begin.</p>
-            </div>
-        </div>
-
-        <div class="controls">
-            <button id="startButton" onclick="startCamera()">
-                Start Camera
-            </button>
-
-            <button id="stopButton" onclick="stopCamera()" disabled>
-                Stop Camera
-            </button>
-        </div>
-
-        <p id="status">Status: Waiting for camera permission.</p>
-    </section>
-
-    <section class="panel">
-        <h2>Scan Information</h2>
-        <p>Future analysis features will include:</p>
-        <ul>
-            <li>Body pose and posture landmarks</li>
-            <li>Estimated body measurements with calibration</li>
-            <li>Scan summary and report</li>
-        </ul>
-    </section>
-
-    <section class="panel">
-        <h2>Privacy and Safety</h2>
-        <div class="notice">
-            Camera access requires your permission. This first version
-            displays the camera feed locally and does not upload or save
-            camera images. This tool is not a medical diagnostic device.
-            Camera-based estimates cannot identify internal diseases.
-        </div>
-    </section>
-
-</main>
-
-<footer>
-    AI Body Scanner | Prototype Version 1.0
-</footer>
-
-<script>
-    let cameraStream = null;
-
-    async function startCamera() {
-        const video = document.getElementById("camera");
-        const message = document.getElementById("cameraMessage");
-        const status = document.getElementById("status");
-
-        try {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error("Camera access is unavailable. Open this site using HTTPS.");
-            }
-
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: "user"
-                },
-                audio: false
+        // Detect unexpected camera disconnection
+        cameraStream.getVideoTracks().forEach(track => {
+            track.addEventListener("ended", () => {
+                status.textContent =
+                    "Status: Camera disconnected. Please restart.";
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                video.srcObject = null;
+                video.style.display = "none";
+                message.style.display = "block";
+                cameraStream = null;
             });
+        });
 
-            video.srcObject = cameraStream;
-            video.style.display = "block";
-            message.style.display = "none";
-
-            document.getElementById("startButton").disabled = true;
-            document.getElementById("stopButton").disabled = false;
-
-            status.textContent = "Status: Camera is running.";
-        } catch (error) {
-            status.textContent = "Camera error: " + error.message;
-        }
-    }
-
-    function stopCamera() {
-        const video = document.getElementById("camera");
-        const message = document.getElementById("cameraMessage");
+    } catch (error) {
+        console.error("Camera error:", error);
 
         if (cameraStream) {
             cameraStream.getTracks().forEach(track => track.stop());
@@ -245,13 +75,41 @@
         video.style.display = "none";
         message.style.display = "block";
 
-        document.getElementById("startButton").disabled = false;
-        document.getElementById("stopButton").disabled = true;
+        startButton.disabled = false;
+        stopButton.disabled = true;
 
-        document.getElementById("status").textContent =
-            "Status: Camera stopped.";
+        status.textContent = "Camera error: " + error.message;
+
+    } finally {
+        startingCamera = false;
     }
-</script>
+}
 
-</body>
-</html>
+function stopCamera() {
+    const video = document.getElementById("camera");
+    const message = document.getElementById("cameraMessage");
+
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+
+    video.pause();
+    video.srcObject = null;
+    video.style.display = "none";
+    message.style.display = "block";
+
+    document.getElementById("startButton").disabled = false;
+    document.getElementById("stopButton").disabled = true;
+
+    document.getElementById("status").textContent =
+        "Status: Camera stopped.";
+}
+
+// Handle page visibility changes
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && cameraStream) {
+        document.getElementById("status").textContent =
+            "Status: Camera paused while page is hidden.";
+    }
+});

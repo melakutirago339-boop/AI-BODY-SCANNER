@@ -8,7 +8,12 @@ import base64
 app = Flask(__name__)
 
 mp_pose = mp.solutions.pose
-
+pose_detector = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=0,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -51,23 +56,18 @@ def scan():
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        with mp_pose.Pose(
-            static_image_mode=True,
-            model_complexity=1,
-            min_detection_confidence=0.5
-        ) as pose:
+       results = pose_detector.process(rgb)
 
-            results = pose.process(rgb)
+if not results.pose_landmarks:
+    return jsonify({
+        "success": True,
+        "detected": False,
+        "landmarks": 0,
+        "points": [],
+        "posture": "Full body not detected"
+    })
 
-            if not results.pose_landmarks:
-                return jsonify({
-                    "success": True,
-                    "detected": False,
-                    "landmarks": 0,
-                    "posture": "Full body not detected"
-                })
-
-            points = results.pose_landmarks.landmark
+points = results.pose_landmarks.landmark
 
             landmarks = []
 

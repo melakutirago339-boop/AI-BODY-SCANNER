@@ -153,6 +153,31 @@ Side View Scan
 
 <section class="panel">
 <h2>AI Body Measurements</h2>
+ 
+<section class="panel">
+<h2>Combined Body Measurements</h2>
+
+<div class="result">
+<p>Calibration: <strong id="combinedCalibration">Waiting</strong></p>
+<p>Shoulder Width: <strong id="combinedShoulder">--</strong></p>
+<p>Chest Width: <strong id="combinedChest">--</strong></p>
+<p>Waist Width: <strong id="combinedWaist">--</strong></p>
+<p>Hip Width: <strong id="combinedHip">--</strong></p>
+<p>Chest Depth: <strong id="combinedChestDepth">--</strong></p>
+<p>Waist Depth: <strong id="combinedWaistDepth">--</strong></p>
+<p>Hip Depth: <strong id="combinedHipDepth">--</strong></p>
+<p>Chest Circumference: <strong id="combinedChestCirc">--</strong></p>
+<p>Waist Circumference: <strong id="combinedWaistCirc">--</strong></p>
+<p>Hip Circumference: <strong id="combinedHipCirc">--</strong></p>
+</div>
+
+<p style="font-size:12px;color:#777">
+All values are approximate estimates, not verified body measurements.
+</p>
+
+<button onclick="downloadReport()">Download Combined Report</button>
+</section>
+
 
 <div class="result">
   <label for="knownHeight">Your actual height (cm) – Calibration</label>

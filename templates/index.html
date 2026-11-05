@@ -272,11 +272,21 @@ async function scanBody(){
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({image:image})
   });
+const result = await response.text();
 
-  const data=await response.json();
+let data;
 
-  if(!response.ok)throw new Error(data.error||"Scan failed");
+try {
+    data = JSON.parse(result);
+} catch (error) {
+    throw new Error(
+        "Server returned HTML instead of JSON. Check Flask route and Render logs."
+    );
+}
 
+if (!response.ok) {
+    throw new Error(data.error || "Scan failed");
+}
   lastScan=data;
 
   document.getElementById("poseStatus").textContent="Completed";

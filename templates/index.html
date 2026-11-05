@@ -1,144 +1,359 @@
 
-let cameraStream = null;
-let startingCamera = false;
-let lastScan = null;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Body Scanner</title>
 
-async function startCamera() {
-    if (startingCamera) return;
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#eef3f8;
+ color:#172b4d;
+}
+header{
+ background:#102b4e;
+ color:white;
+ text-align:center;
+ padding:20px;
+}
+main{
+ width:min(950px,94%);
+ margin:25px auto;
+}
+.panel{
+ background:white;
+ padding:20px;
+ margin-bottom:20px;
+ border-radius:14px;
+ box-shadow:0 4px 16px #0001;
+}
+.camera-box{
+ background:#101b2b;
+ border-radius:12px;
+ min-height:300px;
+ position:relative;
+ overflow:hidden;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+}
+#camera{
+ width:100%;
+ height:auto;
+ display:none;
+}
+#overlay{
+ position:absolute;
+ inset:0;
+ width:100%;
+ height:100%;
+ pointer-events:none;
+}
+#cameraMessage{
+ color:white;
+ text-align:center;
+ padding:25px;
+}
+.controls{
+ display:flex;
+ flex-wrap:wrap;
+ gap:10px;
+ margin-top:15px;
+}
+button{
+ border:0;
+ border-radius:8px;
+ padding:13px 20px;
+ font-weight:bold;
+ cursor:pointer;
+}
+#startButton{background:#087e55;color:white}
+#stopButton{background:#c0392b;color:white}
+#scanButton{background:#1769aa;color:white}
+button:disabled{opacity:.5}
+#status{font-weight:bold;margin-top:15px}
+.result{
+ background:#edf5fc;
+ padding:15px;
+ border-radius:8px;
+ margin-top:10px;
+}
+</style>
+</head>
 
-    const video = document.getElementById("camera");
-    const message = document.getElementById("cameraMessage");
-    const status = document.getElementById("status");
+<body>
 
-    startingCamera = true;
-    document.getElementById("startButton").disabled = true;
+<header>
+<h1>AI BODY SCANNER</h1>
+<p>Live Skeleton & Body Posture Analysis</p>
+</header>
 
-    try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" },
-            audio: false
-        });
+<main>
 
-        video.srcObject = cameraStream;
-        video.style.display = "block";
-        message.style.display = "none";
+<section class="panel">
+<h2>Live Camera Scanner</h2>
+<p>Stand in front of your camera with your full body visible.</p>
 
-        await video.play();
+<div class="camera-box">
+<video id="camera" autoplay playsinline muted></video>
+<canvas id="overlay"></canvas>
 
-        document.getElementById("stopButton").disabled = false;
-        document.getElementById("scanButton").disabled = false;
+<div id="cameraMessage">
+<h3>Camera Not Started</h3>
+<p>Press Start Camera</p>
+</div>
+</div>
 
-        status.textContent = "Camera is running.";
+<div class="controls">
+<button id="startButton" onclick="startCamera()">Start Camera</button>
+<button id="stopButton" onclick="stopCamera()" disabled>Stop Camera</button>
+<button id="scanButton" onclick="scanBody()" disabled>Scan Body</button>
+</div>
 
-    } catch (error) {
-        status.textContent = "Camera Error: " + error.message;
-        document.getElementById("startButton").disabled = false;
-    } finally {
-        startingCamera = false;
-    }
+<p id="status">Waiting for camera permission.</p>
+</section>
+
+<section class="panel">
+<h2>AI Body Analysis</h2>
+<div class="result">
+<p>Pose Detection: <strong id="poseStatus">Waiting</strong></p>
+<p>Body Visibility: <strong id="visibility">Not detected</strong></p>
+<p>Posture: <strong id="posture">Not analyzed</strong></p>
+<p>Landmarks: <strong id="landmarks">0</strong></p>
+</div>
+</section>
+
+<section class="panel">
+<h2>Body Measurements</h2>
+<div class="result">
+<p>Estimated Height: <strong id="height">Needs calibration</strong></p>
+<p>Shoulder Width: <strong id="shoulder">Needs calibration</strong></p>
+<p>Body Proportions: <strong id="proportions">Not available</strong></p>
+</div>
+<button onclick="downloadReport()">Download Report</button>
+</section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script>
+let cameraStream=null;
+let startingCamera=false;
+let pose=null;
+let lastScan=null;
+let animationId=null;
+let latestPose=null;
+
+const video=document.getElementById("camera");
+const overlay=document.getElementById("overlay");
+const ctx=overlay.getContext("2d");
+
+async function initializePose(){
+ if(pose)return;
+
+ pose=new Pose({
+  locateFile:(file)=>
+   `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+ });
+
+ pose.setOptions({
+  modelComplexity:1,
+  smoothLandmarks:true,
+  enableSegmentation:false,
+  minDetectionConfidence:0.5,
+  minTrackingConfidence:0.5
+ });
+
+ pose.onResults(results=>{
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+
+  if(!results.poseLandmarks){
+   latestPose=null;
+   document.getElementById("visibility").textContent="Not detected";
+   return;
+  }
+
+  latestPose=results.poseLandmarks;
+
+  drawConnectors(
+   ctx,
+   results.poseLandmarks,
+   POSE_CONNECTIONS,
+   {color:"#00ff88",lineWidth:4}
+  );
+
+  drawLandmarks(
+   ctx,
+   results.poseLandmarks,
+   {color:"#ff3030",lineWidth:2,radius:4}
+  );
+
+  document.getElementById("visibility").textContent="Detected";
+  document.getElementById("landmarks").textContent=
+   results.poseLandmarks.length;
+
+  document.getElementById("poseStatus").textContent="Live Tracking";
+  document.getElementById("posture").textContent=
+   analyzePosture(results.poseLandmarks);
+ });
 }
 
-function stopCamera() {
-    if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-        cameraStream = null;
-    }
+function analyzePosture(p){
+ const left=p[11];
+ const right=p[12];
 
-    const video = document.getElementById("camera");
-    video.pause();
-    video.srcObject = null;
-    video.style.display = "none";
+ if(!left || !right)return "Not analyzed";
 
-    document.getElementById("cameraMessage").style.display = "block";
-    document.getElementById("startButton").disabled = false;
-    document.getElementById("stopButton").disabled = true;
-    document.getElementById("scanButton").disabled = true;
+ const shoulderDifference=Math.abs(left.y-right.y);
 
-    document.getElementById("status").textContent = "Camera stopped.";
+ if(shoulderDifference>0.06){
+  return "Shoulder imbalance detected";
+ }
+
+ return "Shoulders approximately level";
 }
 
-async function scanBody() {
-    const video = document.getElementById("camera");
-    const status = document.getElementById("status");
+async function startCamera(){
+ if(startingCamera)return;
 
-    if (!cameraStream || video.readyState < 2) {
-        status.textContent = "Start camera first.";
-        return;
-    }
+ startingCamera=true;
+ const start=document.getElementById("startButton");
+ const status=document.getElementById("status");
 
-    status.textContent = "Scanning body...";
+ start.disabled=true;
+ status.textContent="Connecting camera...";
 
-    try {
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+ try{
+  await initializePose();
 
-        canvas.getContext("2d").drawImage(video, 0, 0);
+  cameraStream=await navigator.mediaDevices.getUserMedia({
+   video:{
+    facingMode:"user",
+    width:1280,
+    height:720
+   },
+   audio:false
+  });
 
-        const image = canvas.toDataURL("image/jpeg", 0.85);
+  video.srcObject=cameraStream;
+  video.style.display="block";
 
-        const response = await fetch("/api/scan", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ image })
-        });
+  document.getElementById("cameraMessage").style.display="none";
 
-        const data = await response.json();
+  await video.play();
 
-        if (!response.ok || !data.success) {
-            throw new Error(data.error || "Scan failed");
-        }
+  overlay.width=video.videoWidth;
+  overlay.height=video.videoHeight;
 
-        lastScan = data;
+  document.getElementById("stopButton").disabled=false;
+  document.getElementById("scanButton").disabled=false;
 
-        document.getElementById("poseStatus").textContent =
-            data.detected ? "Completed" : "Not detected";
+  status.textContent="Camera running. Live skeleton active.";
 
-        document.getElementById("visibility").textContent =
-            data.detected ? "Detected" : "Not detected";
+  detectFrame();
 
-        document.getElementById("landmarks").textContent =
-            data.landmarks || 0;
-
-        document.getElementById("posture").textContent =
-            data.posture || "Not analyzed";
-
-        document.getElementById("height").textContent =
-            data.height || "Needs calibration";
-
-        document.getElementById("shoulder").textContent =
-            data.shoulder || "Needs calibration";
-
-        document.getElementById("proportions").textContent =
-            data.proportions || "Not available";
-
-        status.textContent = "Scan completed successfully.";
-
-    } catch (error) {
-        status.textContent = "Scan Error: " + error.message;
-        console.error(error);
-    }
+ }catch(error){
+  console.error(error);
+  status.textContent="Camera Error: "+error.message;
+  start.disabled=false;
+  stopCamera();
+ }finally{
+  startingCamera=false;
+ }
 }
 
-function downloadReport() {
-    if (!lastScan) {
-        alert("Please scan first.");
-        return;
-    }
+async function detectFrame(){
+ if(!cameraStream)return;
 
-    const blob = new Blob(
-        [JSON.stringify(lastScan, null, 2)],
-        { type: "application/json" }
-    );
+ if(video.readyState>=2){
+  await pose.send({image:video});
+ }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = "body-scan-report.json";
-    a.click();
-
-    URL.revokeObjectURL(url);
+ if(cameraStream){
+  animationId=requestAnimationFrame(detectFrame);
+ }
 }
+
+function stopCamera(){
+ if(animationId){
+  cancelAnimationFrame(animationId);
+  animationId=null;
+ }
+
+ if(cameraStream){
+  cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream=null;
+ }
+
+ video.pause();
+ video.srcObject=null;
+ video.style.display="none";
+
+ ctx.clearRect(0,0,overlay.width,overlay.height);
+
+ document.getElementById("cameraMessage").style.display="block";
+ document.getElementById("startButton").disabled=false;
+ document.getElementById("stopButton").disabled=true;
+ document.getElementById("scanButton").disabled=true;
+ document.getElementById("status").textContent="Camera stopped.";
+}
+
+async function scanBody(){
+ if(!latestPose){
+  document.getElementById("status").textContent=
+   "No body detected. Stand fully in front of camera.";
+  return;
+ }
+
+ const p=latestPose;
+
+ lastScan={
+  success:true,
+  detected:true,
+  landmarks:p.length,
+  posture:analyzePosture(p),
+  points:p.map(point=>({
+   x:Number(point.x.toFixed(4)),
+   y:Number(point.y.toFixed(4)),
+   visibility:Number(point.visibility.toFixed(4))
+  })),
+  height:"Needs calibration",
+  shoulder:"Needs calibration",
+  proportions:"Pose landmarks available"
+ };
+
+ document.getElementById("poseStatus").textContent="Completed";
+ document.getElementById("visibility").textContent="Detected";
+ document.getElementById("landmarks").textContent=p.length;
+ document.getElementById("posture").textContent=lastScan.posture;
+ document.getElementById("status").textContent="Scan completed successfully.";
+}
+
+function downloadReport(){
+ if(!lastScan){
+  alert("Please complete a scan first.");
+  return;
+ }
+
+ const blob=new Blob(
+  [JSON.stringify(lastScan,null,2)],
+  {type:"application/json"}
+ );
+
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="body-scan-report.json";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

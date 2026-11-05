@@ -1,9 +1,9 @@
 
-
 from flask import Flask, render_template, jsonify, request
 import mediapipe as mp
 import cv2
 import numpy as np
+import base64
 
 app = Flask(__name__)
 
@@ -20,19 +20,28 @@ def health():
         "application": "AI Body Scanner"
     })
 
-@app.route("/detect-pose", methods=["POST"])
-def detect_pose():
+@app.route("/api/scan", methods=["POST"])
+def scan():
     try:
-        if "image" not in request.files:
+        data = request.get_json(silent=True)
+
+        if not data or "image" not in data:
             return jsonify({
                 "success": False,
                 "error": "No image received"
             }), 400
 
-        file = request.files["image"]
+        image_data = data["image"]
 
-        image_bytes = np.frombuffer(file.read(), np.uint8)
-        frame = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+
+        image_bytes = base64.b64decode(image_data)
+
+        frame = cv2.imdecode(
+            np.frombuffer(image_bytes, np.uint8),
+            cv2.IMREAD_COLOR
+        )
 
         if frame is None:
             return jsonify({
@@ -40,9 +49,7 @@ def detect_pose():
                 "error": "Invalid image"
             }), 400
 
-        rgb_frame = cv2.cvtColor(
-            frame, cv2.COLOR_BGR2RGB
-        )
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         with mp_pose.Pose(
             static_image_mode=True,
@@ -50,18 +57,21 @@ def detect_pose():
             min_detection_confidence=0.5
         ) as pose:
 
-            results = pose.process(rgb_frame)
+            results = pose.process(rgb)
 
             if not results.pose_landmarks:
                 return jsonify({
                     "success": True,
                     "detected": False,
-                    "message": "No full body detected"
+                    "landmarks": 0,
+                    "posture": "Full body not detected"
                 })
+
+            points = results.pose_landmarks.landmark
 
             landmarks = []
 
-            for point in results.pose_landmarks.landmark:
+            for point in points:
                 landmarks.append({
                     "x": round(point.x, 4),
                     "y": round(point.y, 4),
@@ -71,15 +81,21 @@ def detect_pose():
         return jsonify({
             "success": True,
             "detected": True,
-            "landmarks": landmarks
+            "landmarks": len(landmarks),
+            "posture": "Pose detected",
+            "height": "Needs calibration",
+            "shoulder": "Needs calibration",
+            "proportions": "Pose landmarks available",
+            "points": landmarks
         })
 
     except Exception:
-        app.logger.exception("Pose detection failed")
+        app.logger.exception("Scan failed")
         return jsonify({
             "success": False,
-            "error": "Pose detection failed on server"
+            "error": "Server scan failed. Check Render logs."
         }), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

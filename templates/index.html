@@ -1,486 +1,144 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Full Body Scanner</title>
-
-<style>
-*{box-sizing:border-box}
-body{
- margin:0;
- font-family:Arial,sans-serif;
- background:#eef3f8;
- color:#172b4d;
-}
-header{
- background:#102b4e;
- color:white;
- text-align:center;
- padding:24px 12px;
-}
-main{width:min(1000px,94%);margin:25px auto}
-.panel{
- background:white;
- padding:20px;
- margin-bottom:20px;
- border-radius:14px;
- box-shadow:0 4px 16px #00000010;
-}
-.camera-box{
- background:#101b2b;
- border-radius:12px;
- min-height:300px;
- position:relative;
- overflow:hidden;
- display:flex;
- align-items:center;
- justify-content:center;
-}
-video{width:100%;height:auto;display:none}
-#overlay{
- position:absolute;
- inset:0;
- width:100%;
- height:100%;
- pointer-events:none;
-}
-#cameraMessage{color:white;text-align:center;padding:25px}
-.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
-button{
- border:0;border-radius:8px;padding:13px 20px;
- font-weight:bold;cursor:pointer;
-}
-button:disabled{opacity:.5;cursor:not-allowed}
-.primary{background:#087e55;color:white}
-.danger{background:#c0392b;color:white}
-.blue{background:#1769aa;color:white}
-.result{
- background:#edf5fc;padding:15px;
- border-radius:8px;margin-top:10px;
- overflow-wrap:anywhere;
-}
-.grid{
- display:grid;
- grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
- gap:12px;
-}
-.metric{
- background:#edf5fc;padding:15px;border-radius:10px;
-}
-.metric small{color:#52677f}
-.notice{
- background:#fff6df;padding:14px;
- border-left:4px solid #e5a000;line-height:1.6;
-}
-input[type=file]{
- width:100%;padding:12px;
- border:1px solid #ccd5df;border-radius:8px;
-}
-#medicalPreview{
- max-width:100%;max-height:450px;
- display:none;margin:15px auto;
-}
-footer{text-align:center;padding:20px;color:#52677f}
-</style>
-</head>
-
-<body>
-
-<header>
-<h1>AI FULL BODY SCANNER</h1>
-<p>3D Body Analysis & Medical Imaging Platform</p>
-</header>
-
-<main>
-
-<section class="panel">
-<h2>1. Live Body Scanner</h2>
-<p>Stand in front of the camera with your full body visible.</p>
-
-<div class="camera-box">
-<video id="camera" autoplay playsinline muted></video>
-<canvas id="overlay"></canvas>
-<div id="cameraMessage">
-<h3>Camera Not Started</h3>
-<p>Press Start Camera</p>
-</div>
-</div>
-
-<div class="controls">
-<button class="primary" id="startButton"
- onclick="startCamera()">Start Camera</button>
-
-<button class="danger" id="stopButton"
- onclick="stopCamera()" disabled>Stop Camera</button>
-
-<button class="blue" id="scanButton"
- onclick="scanBody()" disabled>Scan Body</button>
-</div>
-
-<p id="status">Status: Waiting for camera permission.</p>
-</section>
-
-<section class="panel">
-<h2>2. AI Pose Analysis</h2>
-<div class="grid">
- <div class="metric">
-  <small>Pose Detection</small>
-  <p id="poseStatus">Waiting</p>
- </div>
- <div class="metric">
-  <small>Body Visibility</small>
-  <p id="visibility">Not detected</p>
- </div>
- <div class="metric">
-  <small>Landmarks</small>
-  <p id="landmarks">0</p>
- </div>
- <div class="metric">
-  <small>Posture</small>
-  <p id="posture">Not analyzed</p>
- </div>
-</div>
-<button class="blue" onclick="downloadReport()">
-Download Report
-</button>
-</section>
-
-<section class="panel">
-<h2>3. Body Measurements</h2>
-<div class="grid">
- <div class="metric">
-  <small>Estimated Height</small>
-  <p id="height">Needs calibration</p>
- </div>
- <div class="metric">
-  <small>Shoulder Width</small>
-  <p id="shoulder">Needs calibration</p>
- </div>
- <div class="metric">
-  <small>Body Proportions</small>
-  <p id="proportions">Not available</p>
- </div>
-</div>
-<p class="notice">
-Camera-based measurements are estimates, not clinical measurements.
-A reference object or calibrated depth camera is needed for real-world
-dimensions.
-</p>
-</section>
-
-<section class="panel">
-<h2>4. Medical Image Scanner</h2>
-<p>Upload a medical image for viewing. This initial viewer accepts JPG and PNG images.</p>
-
-<input type="file" id="medicalFile"
- accept="image/png,image/jpeg,image/webp"
- onchange="previewMedicalImage(event)">
-
-<img id="medicalPreview" alt="Medical image preview">
-
-<p id="medicalStatus">No medical image selected.</p>
-
-<div class="notice">
-CT, MRI and Ultrasound image analysis will be a separate medical imaging
-module. An ordinary photograph cannot reveal internal organs.
-DICOM upload and analysis are not enabled in this first version.
-</div>
-</section>
-
-<section class="panel">
-<h2>5. Anatomy Viewer</h2>
-<p>Planned anatomy modules:</p>
-<ul>
-<li>Human skeleton</li>
-<li>Muscular system</li>
-<li>Heart and lungs</li>
-<li>Liver and kidneys</li>
-<li>Digestive system</li>
-<li>Blood vessels</li>
-</ul>
-<p id="anatomyStatus">
-3D anatomy model module: Next development phase.
-</p>
-</section>
-
-<section class="panel">
-<h2>6. Privacy & Safety</h2>
-<div class="notice">
-Camera access requires your permission.
-The camera image is sent to the Flask server for pose processing.
-Do not upload identifiable medical images unless you have appropriate
-privacy and security protections.
-This application is not a medical diagnostic device.
-</div>
-</section>
-
-</main>
-
-<footer>AI Full Body Scanner | Version 3.0</footer>
-
-<script>
 let cameraStream = null;
 let startingCamera = false;
 let lastScan = null;
 
-const $ = id => document.getElementById(id);
+async function startCamera() {
+    if (startingCamera) return;
 
-async function startCamera(){
- if(startingCamera) return;
+    const video = document.getElementById("camera");
+    const message = document.getElementById("cameraMessage");
+    const status = document.getElementById("status");
 
- startingCamera = true;
- $("startButton").disabled = true;
- $("status").textContent = "Requesting camera permission...";
+    startingCamera = true;
+    document.getElementById("startButton").disabled = true;
 
- try{
-  if(!navigator.mediaDevices?.getUserMedia){
-   throw new Error("Camera requires HTTPS and browser permission.");
-  }
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false
+        });
 
-  cameraStream = await navigator.mediaDevices.getUserMedia({
-   video:{
-    facingMode:{ideal:"user"},
-    width:{ideal:1280},
-    height:{ideal:720}
-   },
-   audio:false
-  });
+        video.srcObject = cameraStream;
+        video.style.display = "block";
+        message.style.display = "none";
 
-  const video = $("camera");
-  video.srcObject = cameraStream;
-  video.style.display = "block";
-  $("cameraMessage").style.display = "none";
+        await video.play();
 
-  await video.play();
+        document.getElementById("stopButton").disabled = false;
+        document.getElementById("scanButton").disabled = false;
 
-  $("stopButton").disabled = false;
-  $("scanButton").disabled = false;
-  $("status").textContent = "Camera is running.";
+        status.textContent = "Camera is running.";
 
-  cameraStream.getVideoTracks()[0].addEventListener("ended",()=>{
-   stopCamera();
-  });
-
- }catch(error){
-  console.error(error);
-  $("status").textContent = "Camera Error: " + error.message;
-  $("startButton").disabled = false;
-  $("stopButton").disabled = true;
-  $("scanButton").disabled = true;
- }finally{
-  startingCamera = false;
- }
+    } catch (error) {
+        status.textContent = "Camera Error: " + error.message;
+        document.getElementById("startButton").disabled = false;
+    } finally {
+        startingCamera = false;
+    }
 }
 
-function stopCamera(){
- if(cameraStream){
-  cameraStream.getTracks().forEach(track=>track.stop());
-  cameraStream = null;
- }
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
 
- const video = $("camera");
- video.pause();
- video.srcObject = null;
- video.style.display = "none";
+    const video = document.getElementById("camera");
+    video.pause();
+    video.srcObject = null;
+    video.style.display = "none";
 
- $("cameraMessage").style.display = "block";
- $("startButton").disabled = false;
- $("stopButton").disabled = true;
- $("scanButton").disabled = true;
+    document.getElementById("cameraMessage").style.display = "block";
+    document.getElementById("startButton").disabled = false;
+    document.getElementById("stopButton").disabled = true;
+    document.getElementById("scanButton").disabled = true;
 
- clearOverlay();
- $("status").textContent = "Camera stopped.";
+    document.getElementById("status").textContent = "Camera stopped.";
 }
 
-function clearOverlay(){
- const canvas = $("overlay");
- const ctx = canvas.getContext("2d");
- ctx.clearRect(0,0,canvas.width,canvas.height);
+async function scanBody() {
+    const video = document.getElementById("camera");
+    const status = document.getElementById("status");
+
+    if (!cameraStream || video.readyState < 2) {
+        status.textContent = "Start camera first.";
+        return;
+    }
+
+    status.textContent = "Scanning body...";
+
+    try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        canvas.getContext("2d").drawImage(video, 0, 0);
+
+        const image = canvas.toDataURL("image/jpeg", 0.85);
+
+        const response = await fetch("/api/scan", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ image })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || "Scan failed");
+        }
+
+        lastScan = data;
+
+        document.getElementById("poseStatus").textContent =
+            data.detected ? "Completed" : "Not detected";
+
+        document.getElementById("visibility").textContent =
+            data.detected ? "Detected" : "Not detected";
+
+        document.getElementById("landmarks").textContent =
+            data.landmarks || 0;
+
+        document.getElementById("posture").textContent =
+            data.posture || "Not analyzed";
+
+        document.getElementById("height").textContent =
+            data.height || "Needs calibration";
+
+        document.getElementById("shoulder").textContent =
+            data.shoulder || "Needs calibration";
+
+        document.getElementById("proportions").textContent =
+            data.proportions || "Not available";
+
+        status.textContent = "Scan completed successfully.";
+
+    } catch (error) {
+        status.textContent = "Scan Error: " + error.message;
+        console.error(error);
+    }
 }
 
-function drawPose(points, width, height){
- const canvas = $("overlay");
- const video = $("camera");
+function downloadReport() {
+    if (!lastScan) {
+        alert("Please scan first.");
+        return;
+    }
 
- canvas.width = width;
- canvas.height = height;
+    const blob = new Blob(
+        [JSON.stringify(lastScan, null, 2)],
+        { type: "application/json" }
+    );
 
- const ctx = canvas.getContext("2d");
- ctx.clearRect(0,0,width,height);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
 
- // MediaPipe pose connections
- const connections = [
-  [11,12],[11,13],[13,15],[12,14],[14,16],
-  [11,23],[12,24],[23,24],
-  [23,25],[25,27],[24,26],[26,28],
-  [27,29],[29,31],[28,30],[30,32]
- ];
+    a.href = url;
+    a.download = "body-scan-report.json";
+    a.click();
 
- ctx.strokeStyle = "#00e5a0";
- ctx.lineWidth = Math.max(2,width/350);
-
- connections.forEach(([a,b])=>{
-  const p1 = points[a];
-  const p2 = points[b];
-
-  if(!p1 || !p2 ||
-     p1.visibility < 0.5 ||
-     p2.visibility < 0.5) return;
-
-  ctx.beginPath();
-  ctx.moveTo(p1.x*width,p1.y*height);
-  ctx.lineTo(p2.x*width,p2.y*height);
-  ctx.stroke();
- });
-
- ctx.fillStyle = "#ffcc00";
-
- points.forEach(point=>{
-  if(point.visibility < 0.5) return;
-
-  ctx.beginPath();
-  ctx.arc(point.x*width,point.y*height,5,0,Math.PI*2);
-  ctx.fill();
- });
+    URL.revokeObjectURL(url);
 }
-
-async function scanBody(){
- const video = $("camera");
-
- if(!cameraStream || video.readyState < 2){
-  $("status").textContent = "Start the camera first.";
-  return;
- }
-
- $("scanButton").disabled = true;
- $("status").textContent = "Sending image for AI analysis...";
-
- try{
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  canvas.getContext("2d").drawImage(video,0,0);
-
-  const blob = await new Promise(resolve=>{
-   canvas.toBlob(resolve,"image/jpeg",0.85);
-  });
-
-  if(!blob) throw new Error("Could not capture camera image.");
-
-  // Match the Flask /detect-pose endpoint.
-  const formData = new FormData();
-  formData.append("image",blob,"body-scan.jpg");
-
-  const response = await fetch("/detect-pose",{
-   method:"POST",
-   body:formData
-  });
-
-  const text = await response.text();
-  let data;
-
-  try{
-   data = JSON.parse(text);
-  }catch(error){
-   throw new Error(
-    "Server returned HTML instead of JSON. Check Flask route and logs."
-   );
-  }
-
-  if(!response.ok){
-   throw new Error(data.error || "Pose detection failed.");
-  }
-
-  lastScan = data;
-
-  $("poseStatus").textContent =
-   data.success ? "Completed" : "Failed";
-
-  $("visibility").textContent =
-   data.detected ? "Detected" : "Not detected";
-
-  const points = data.landmarks || [];
-
-  $("landmarks").textContent = points.length;
-
-  if(data.detected && points.length){
-   drawPose(points,canvas.width,canvas.height);
-   $("posture").textContent =
-    "Pose landmarks detected; posture review required.";
-   $("proportions").textContent =
-    "Relative proportions available; calibration required.";
-  }else{
-   clearOverlay();
-   $("posture").textContent = "No full body detected.";
-   $("proportions").textContent = "Not available";
-  }
-
-  $("height").textContent = "Needs physical calibration";
-  $("shoulder").textContent = "Needs physical calibration";
-
-  $("status").textContent = data.detected
-   ? "Scan completed successfully."
-   : "No full body detected. Stand farther back and try again.";
-
- }catch(error){
-  console.error(error);
-  $("status").textContent = "Scan Error: " + error.message;
- }finally{
-  $("scanButton").disabled = !cameraStream;
- }
-}
-
-function previewMedicalImage(event){
- const file = event.target.files[0];
- if(!file) return;
-
- const allowed = ["image/jpeg","image/png","image/webp"];
-
- if(!allowed.includes(file.type)){
-  $("medicalStatus").textContent = "Unsupported image format.";
-  return;
- }
-
- const url = URL.createObjectURL(file);
- const preview = $("medicalPreview");
-
- if(preview.dataset.url){
-  URL.revokeObjectURL(preview.dataset.url);
- }
-
- preview.src = url;
- preview.dataset.url = url;
- preview.style.display = "block";
-
- $("medicalStatus").textContent =
-  "Image loaded for viewing: " + file.name +
-  ". No medical diagnosis has been performed.";
-}
-
-function downloadReport(){
- if(!lastScan){
-  alert("Please complete a scan first.");
-  return;
- }
-
- const blob = new Blob(
-  [JSON.stringify(lastScan,null,2)],
-  {type:"application/json"}
- );
-
- const url = URL.createObjectURL(blob);
- const a = document.createElement("a");
-
- a.href = url;
- a.download = "body-scan-report.json";
- a.click();
-
- setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-</script>
-
-</body>
-</html>

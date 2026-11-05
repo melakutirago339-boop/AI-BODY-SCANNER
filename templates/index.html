@@ -126,6 +126,29 @@ button:disabled{opacity:.5}
 <p>Landmarks: <strong id="landmarks">0</strong></p>
 </div>
 </section>
+ 
+<section class="panel">
+<h2>Dual View Body Scanner</h2>
+
+<p>Complete both scans for combined estimates.</p>
+
+<div class="controls">
+<button id="frontScanButton" onclick="captureView('front')">
+Front View Scan
+</button>
+
+<button id="sideScanButton" onclick="captureView('side')">
+Side View Scan
+</button>
+</div>
+
+<div class="result">
+<p>Front Scan: <strong id="frontStatus">Pending</strong></p>
+<p>Side Scan: <strong id="sideStatus">Pending</strong></p>
+<p>Combined Scan: <strong id="combinedStatus">Not ready</strong></p>
+</div>
+</section>
+
 
 
 <section class="panel">
@@ -164,6 +187,66 @@ let pose=null;
 let lastScan=null;
 let animationId=null;
 let latestPose=null;
+ 
+let frontScan=null;
+let sideScan=null;
+
+function captureView(view){
+
+ if(!latestPose){
+  document.getElementById("status").textContent=
+   "Please start camera and detect your body first.";
+  return;
+ }
+
+ const p=latestPose;
+
+ // Require visible shoulders, hips and ankles
+ const required=[11,12,23,24,27,28];
+
+ for(const i of required){
+  if(!p[i] || (p[i].visibility ?? 0)<0.5){
+   document.getElementById("status").textContent=
+    "Full body must be visible.";
+   return;
+  }
+ }
+
+ const measurement={
+  shoulderWidth:Math.abs(p[11].x-p[12].x),
+  hipWidth:Math.abs(p[23].x-p[24].x),
+  bodyHeight:Math.abs(
+   ((p[27].y+p[28].y)/2)-p[0].y
+  ),
+  landmarks:p.map(point=>({
+   x:point.x,
+   y:point.y,
+   visibility:point.visibility ?? 0
+  }))
+ };
+
+ if(view==="front"){
+  frontScan=measurement;
+  document.getElementById("frontStatus").textContent=
+   "Captured successfully";
+ }else{
+  sideScan=measurement;
+  document.getElementById("sideStatus").textContent=
+   "Captured successfully";
+ }
+
+ if(frontScan && sideScan){
+  document.getElementById("combinedStatus").textContent=
+   "Both views captured – Ready for analysis";
+ }else{
+  document.getElementById("combinedStatus").textContent=
+   "Waiting for second view";
+ }
+
+ document.getElementById("status").textContent=
+  view.toUpperCase()+" VIEW captured successfully.";
+}
+
 
 const video=document.getElementById("camera");
 const overlay=document.getElementById("overlay");

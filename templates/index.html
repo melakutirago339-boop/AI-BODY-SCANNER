@@ -355,15 +355,23 @@ async function startCamera(){
  try{
   await initializePose();
 
-  cameraStream=await navigator.mediaDevices.getUserMedia({
-   video:{
-    facingMode:"user",
-    width:1280,
-    height:720
-   },
-   audio:false
-  });
+ try {
+ cameraStream = await navigator.mediaDevices.getUserMedia({
+  video: {
+   facingMode: { ideal: "user" },
+   width: { ideal: 1280 },
+   height: { ideal: 720 }
+  },
+  audio: false
+ });
+} catch (firstError) {
+ console.warn("Trying default camera settings:", firstError);
 
+ cameraStream = await navigator.mediaDevices.getUserMedia({
+  video: true,
+  audio: false
+ });
+}
   video.srcObject=cameraStream;
   video.style.display="block";
 

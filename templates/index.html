@@ -134,6 +134,17 @@ button:disabled{opacity:.5}
 <h2>Dual View Body Scanner</h2>
 
 <p>Complete both scans for combined estimates.</p>
+ <div class="result">
+  <h3>Automatic Body Scan</h3>
+  <p id="autoScanStatus">Waiting to start automatic scan.</p>
+  <p id="autoScanInstruction">
+    Stand in front of the camera with your full body visible.
+  </p>
+  <p>Scan Countdown: <strong id="autoCountdown">--</strong></p>
+  <button id="autoScanButton" onclick="startAutoScan()">
+    Start Automatic Scan
+  </button>
+</div>
 
 <div class="controls">
 <button id="frontScanButton" onclick="captureView('front')">
@@ -218,7 +229,32 @@ let latestPose=null;
  
 let frontScan=null;
 let sideScan=null;
+let autoScanActive = false;
+let stableFrames = 0;
+let scanCountdown = 5;
+let countdownTimer = null;
 
+function startAutoScan(){
+
+ if(!cameraStream){
+  document.getElementById("autoScanStatus").textContent =
+   "Please start the camera first.";
+  return;
+ }
+
+ if(autoScanActive)return;
+
+ autoScanActive = true;
+ stableFrames = 0;
+
+ document.getElementById("autoScanStatus").textContent =
+  "Checking full body visibility...";
+
+ document.getElementById("autoScanInstruction").textContent =
+  "Stand still, face the camera, and keep your full body visible.";
+
+ document.getElementById("autoScanButton").disabled = true;
+}
 
 function captureView(view){
 

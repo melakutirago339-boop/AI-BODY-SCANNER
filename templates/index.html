@@ -234,6 +234,7 @@ let stableFrames = 0;
 let scanCountdown = 5;
 let countdownTimer = null;
 
+
 function startAutoScan(){
 
  if(!cameraStream){
@@ -246,15 +247,58 @@ function startAutoScan(){
 
  autoScanActive = true;
  stableFrames = 0;
+ scanCountdown = 5;
 
- document.getElementById("autoScanStatus").textContent =
-  "Checking full body visibility...";
+ const button = document.getElementById("autoScanButton");
+ const countdown = document.getElementById("autoCountdown");
+ const status = document.getElementById("autoScanStatus");
+ const instruction = document.getElementById("autoScanInstruction");
 
- document.getElementById("autoScanInstruction").textContent =
-  "Stand still, face the camera, and keep your full body visible.";
+ button.disabled = true;
 
- document.getElementById("autoScanButton").disabled = true;
+ status.textContent = "Get ready! Automatic scan starting...";
+ instruction.textContent =
+  "Stand straight and keep your full body visible.";
+
+ countdown.textContent = scanCountdown;
+
+ countdownTimer = setInterval(() => {
+
+  scanCountdown--;
+
+  if(scanCountdown > 0){
+   countdown.textContent = scanCountdown;
+   status.textContent = "Get ready! Scanning in...";
+   return;
+  }
+
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+
+  countdown.textContent = "Scanning...";
+  status.textContent = "AI Body Scan in progress...";
+
+  const previousScan = lastScan;
+
+  scanBody();
+
+  if(lastScan !== previousScan){
+   status.textContent = "Automatic scan completed successfully!";
+   instruction.textContent =
+    "Your new body scan results are ready.";
+   countdown.textContent = "Completed";
+  } else {
+   status.textContent =
+    "Scan could not complete. Check camera and height calibration.";
+   countdown.textContent = "Failed";
+  }
+
+  autoScanActive = false;
+  button.disabled = false;
+
+ }, 1000);
 }
+
 
 function captureView(view){
 

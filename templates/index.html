@@ -122,6 +122,9 @@ button:disabled{opacity:.5}
 <div class="result">
 <p>Pose Detection: <strong id="poseStatus">Waiting</strong></p>
 <p>Body Visibility: <strong id="visibility">Not detected</strong></p>
+<p>Visibility Check: <strong id="visibilityDetails">Waiting for camera</strong></p>
+<p>Missing Body Parts: <strong id="missingParts">None</strong></p>
+<p>Camera Status: <strong id="cameraStatus">Not started</strong></p>
 <p>Posture: <strong id="posture">Not analyzed</strong></p>
 <p>Landmarks: <strong id="landmarks">0</strong></p>
 </div>
@@ -216,66 +219,122 @@ let latestPose=null;
 let frontScan=null;
 let sideScan=null;
 
+
 function captureView(view){
 
  if(!latestPose){
-  document.getElementById("status").textContent=
-   "Please start camera and detect your body first.";
+  document.getElementById("status").textContent =
+   "Please start camera and wait until your body is detected.";
   return;
  }
 
  const p=latestPose;
 
- // Require visible shoulders, hips and ankles
- const required=[11,12,23,24,27,28];
+ // Check only the landmarks needed for this scan.
+ const required = view === "front"
+  ? [11,12,23,24]
+  : [11,12,23,24];
 
  for(const i of required){
-  if(!p[i] || (p[i].visibility ?? 0)<0.5){
-   document.getElementById("status").textContent=
-    "Full body must be visible.";
+  if(!p[i] || (p[i].visibility ?? 0) < 0.4){
+   document.getElementById("status").textContent =
+    "Body not clearly detected. Face the camera and try again.";
    return;
   }
  }
 
- const measurement={
-  shoulderWidth:Math.abs(p[11].x-p[12].x),
-  hipWidth:Math.abs(p[23].x-p[24].x),
-  bodyHeight:Math.abs(
+ const measurement = {
+  shoulderWidth: Math.abs(p[11].x-p[12].x),
+  hipWidth: Math.abs(p[23].x-p[24].x),
+  bodyHeight: Math.abs(
    ((p[27].y+p[28].y)/2)-p[0].y
   ),
-  landmarks:p.map(point=>({
-   x:point.x,
-   y:point.y,
-   visibility:point.visibility ?? 0
+  landmarks: p.map(point => ({
+   x: point.x,
+   y: point.y,
+   visibility: point.visibility ?? 0
   }))
  };
 
- if(view==="front"){
-  frontScan=measurement;
-  document.getElementById("frontStatus").textContent=
+ if(view === "front"){
+  frontScan = measurement;
+  document.getElementById("frontStatus").textContent =
    "Captured successfully";
- }else{
-  sideScan=measurement;
-  document.getElementById("sideStatus").textContent=
+ } else {
+  sideScan = measurement;
+  document.getElementById("sideStatus").textContent =
    "Captured successfully";
  }
 
  if(frontScan && sideScan){
-  document.getElementById("combinedStatus").textContent=
+  document.getElementById("combinedStatus").textContent =
    "Both views captured – Ready for analysis";
- }else{
-  document.getElementById("combinedStatus").textContent=
+ } else {
+  document.getElementById("combinedStatus").textContent =
    "Waiting for second view";
  }
 
- document.getElementById("status").textContent=
-  view.toUpperCase()+" VIEW captured successfully.";
+ document.getElementById("status").textContent =
+  view.toUpperCase() + " VIEW captured successfully.";
 }
 
 
 const video=document.getElementById("camera");
 const overlay=document.getElementById("overlay");
 const ctx=overlay.getContext("2d");
+ function checkBodyVisibility(p){
+
+ const parts = [
+  {name:"Left Shoulder", id:11},
+  {name:"Right Shoulder", id:12},
+  {name:"Left Elbow", id:13},
+  {name:"Right Elbow", id:14},
+  {name:"Left Wrist", id:15},
+  {name:"Right Wrist", id:16},
+  {name:"Left Hip", id:23},
+  {name:"Right Hip", id:24},
+  {name:"Left Knee", id:25},
+  {name:"Right Knee", id:26},
+  {name:"Left Ankle", id:27},
+  {name:"Right Ankle", id:28}
+ ];
+
+ const missing=[];
+ const partial=[];
+
+ for(const part of parts){
+
+  const point=p[part.id];
+
+  if(!point || (point.visibility ?? 0)<0.5){
+   missing.push(part.name);
+  }
+  else if(point.visibility<0.75){
+   partial.push(part.name);
+  }
+ }
+
+ document.getElementById("missingParts").textContent =
+  missing.length ? missing.join(", ") : "None";
+
+ if(missing.length===0 && partial.length===0){
+  document.getElementById("visibilityDetails").textContent =
+   "All key body parts clearly visible";
+ }
+ else if(missing.length===0){
+  document.getElementById("visibilityDetails").textContent =
+   "Detected – Some parts need better visibility";
+ }
+ else{
+  document.getElementById("visibilityDetails").textContent =
+   "Incomplete – Adjust camera position";
+ }
+
+ document.getElementById("visibility").textContent =
+  missing.length===0 ? "Detected" : "Partially detected";
+
+ return missing.length===0;
+}
 
 async function initializePose(){
  if(pose)return;
@@ -297,11 +356,31 @@ async function initializePose(){
   ctx.clearRect(0,0,overlay.width,overlay.height);
 
   if(!results.poseLandmarks){
-   latestPose=null;
-   document.getElementById("visibility").textContent="Not detected";
-   return;
-  }
 
+ latestPose=null;
+
+ document.getElementById("visibility").textContent =
+  "Not detected";
+
+ document.getElementById("visibilityDetails").textContent =
+  "Searching for body...";
+
+ document.getElementById("missingParts").textContent =
+  "Waiting for detection";
+
+ document.getElementById("poseStatus").textContent =
+  "Searching";
+
+ document.getElementById("posture").textContent =
+  "Not analyzed";
+
+ document.getElementById("landmarks").textContent="0";
+
+ document.getElementById("status").textContent =
+  "No body detected. Stand in front of the camera.";
+
+ return;
+}
   latestPose=results.poseLandmarks;
 
   drawConnectors(
@@ -317,7 +396,7 @@ async function initializePose(){
    {color:"#ff3030",lineWidth:2,radius:4}
   );
 
-  document.getElementById("visibility").textContent="Detected";
+ checkBodyVisibility(results.poseLandmarks);
   document.getElementById("landmarks").textContent=
    results.poseLandmarks.length;
 
@@ -351,6 +430,8 @@ async function startCamera(){
 
  start.disabled=true;
  status.textContent="Connecting camera...";
+ document.getElementById("cameraStatus").textContent =
+ "Requesting permission...";
 
  try{
   await initializePose();
@@ -385,15 +466,32 @@ async function startCamera(){
   document.getElementById("stopButton").disabled=false;
   document.getElementById("scanButton").disabled=false;
 
-  status.textContent="Camera running. Live skeleton active.";
+ status.textContent =
+ "Camera connected. Waiting for body detection...";
+
+document.getElementById("cameraStatus").textContent =
+ "Camera connected";
+
+document.getElementById("poseStatus").textContent =
+ "Searching for body";
 
   detectFrame();
 
  }catch(error){
   console.error(error);
   status.textContent="Camera Error: "+error.message;
+  document.getElementById("cameraStatus").textContent =
+ "Camera error: "+error.name;
   start.disabled=false;
   stopCamera();
+  document.getElementById("cameraStatus").textContent =
+ "Stopped";
+
+document.getElementById("poseStatus").textContent =
+ "Waiting";
+
+document.getElementById("visibilityDetails").textContent =
+ "Waiting for camera";
  }finally{
   startingCamera=false;
  }

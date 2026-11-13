@@ -278,9 +278,9 @@ function startAutoScan(){
   countdown.textContent = "Scanning...";
   status.textContent = "AI Body Scan in progress...";
 
-  const previousScan = lastScan;
+ scanBody();
 
-  scanBody();
+if(lastScan && lastScan.success === true){
 
   if(lastScan !== previousScan){
    status.textContent = "Automatic scan completed successfully!";

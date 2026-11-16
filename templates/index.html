@@ -20,10 +20,7 @@ header{
  text-align:center;
  padding:20px;
 }
-main{
- width:min(950px,94%);
- margin:25px auto;
-}
+main{width:min(950px,94%);margin:25px auto}
 .panel{
  background:white;
  padding:20px;
@@ -41,11 +38,7 @@ main{
  align-items:center;
  justify-content:center;
 }
-#camera{
- width:100%;
- height:auto;
- display:none;
-}
+#camera{width:100%;height:auto;display:none}
 #overlay{
  position:absolute;
  inset:0;
@@ -53,17 +46,8 @@ main{
  height:100%;
  pointer-events:none;
 }
-#cameraMessage{
- color:white;
- text-align:center;
- padding:25px;
-}
-.controls{
- display:flex;
- flex-wrap:wrap;
- gap:10px;
- margin-top:15px;
-}
+#cameraMessage{color:white;text-align:center;padding:25px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
 button{
  border:0;
  border-radius:8px;
@@ -71,22 +55,31 @@ button{
  font-weight:bold;
  cursor:pointer;
 }
+button:disabled{opacity:.5;cursor:not-allowed}
 #startButton{background:#087e55;color:white}
 #stopButton{background:#c0392b;color:white}
-#scanButton{background:#1769aa;color:white}
-button:disabled{opacity:.5}
-#status{font-weight:bold;margin-top:15px}
+#scanButton,#frontScanButton,#sideScanButton{background:#1769aa;color:white}
+#autoScanButton{background:#7046a5;color:white}
 .result{
  background:#edf5fc;
  padding:15px;
  border-radius:8px;
  margin-top:10px;
+ overflow-wrap:anywhere;
 }
+#status{font-weight:bold;margin-top:15px}
+input{
+ width:100%;
+ padding:12px;
+ margin-top:8px;
+ border:1px solid #ccc;
+ border-radius:8px;
+}
+.small-note{font-size:12px;color:#667}
 </style>
 </head>
 
 <body>
-
 <header>
 <h1>AI BODY SCANNER</h1>
 <p>Live Skeleton & Body Posture Analysis</p>
@@ -101,7 +94,6 @@ button:disabled{opacity:.5}
 <div class="camera-box">
 <video id="camera" autoplay playsinline muted></video>
 <canvas id="overlay"></canvas>
-
 <div id="cameraMessage">
 <h3>Camera Not Started</h3>
 <p>Press Start Camera</p>
@@ -129,31 +121,22 @@ button:disabled{opacity:.5}
 <p>Landmarks: <strong id="landmarks">0</strong></p>
 </div>
 </section>
- 
+
 <section class="panel">
 <h2>Dual View Body Scanner</h2>
+<p>Complete both front and side scans for combined estimates.</p>
 
-<p>Complete both scans for combined estimates.</p>
- <div class="result">
-  <h3>Automatic Body Scan</h3>
-  <p id="autoScanStatus">Waiting to start automatic scan.</p>
-  <p id="autoScanInstruction">
-    Stand in front of the camera with your full body visible.
-  </p>
-  <p>Scan Countdown: <strong id="autoCountdown">--</strong></p>
-  <button id="autoScanButton" onclick="startAutoScan()">
-    Start Automatic Scan
-  </button>
+<div class="result">
+<h3>Automatic Body Scan</h3>
+<p id="autoScanStatus">Waiting to start automatic scan.</p>
+<p id="autoScanInstruction">Stand in front of the camera with your full body visible.</p>
+<p>Scan Countdown: <strong id="autoCountdown">--</strong></p>
+<button id="autoScanButton" onclick="startAutoScan()">Start Automatic Scan</button>
 </div>
 
 <div class="controls">
-<button id="frontScanButton" onclick="captureView('front')">
-Front View Scan
-</button>
-
-<button id="sideScanButton" onclick="captureView('side')">
-Side View Scan
-</button>
+<button id="frontScanButton" onclick="captureView('front')">Front View Scan</button>
+<button id="sideScanButton" onclick="captureView('side')">Side View Scan</button>
 </div>
 
 <div class="result">
@@ -163,11 +146,23 @@ Side View Scan
 </div>
 </section>
 
-
-
 <section class="panel">
 <h2>AI Body Measurements</h2>
- 
+
+<div class="result">
+<label for="knownHeight">Your actual height (cm) – Calibration</label>
+<input id="knownHeight" type="number" min="100" max="230" placeholder="Example: 175">
+
+<p>Height Reference: <strong id="height">Not calibrated</strong></p>
+<p>Shoulder Width: <strong id="shoulder">Waiting for scan</strong></p>
+<p>Waist Width: <strong id="waist">Waiting for scan</strong></p>
+<p>Hip Width: <strong id="hip">Waiting for scan</strong></p>
+<p>Body Proportions: <strong id="proportions">Not available</strong></p>
+</div>
+
+<p class="small-note">Single-view measurements are approximate estimates, not clinical measurements.</p>
+</section>
+
 <section class="panel">
 <h2>Combined Body Measurements</h2>
 
@@ -185,34 +180,12 @@ Side View Scan
 <p>Hip Circumference: <strong id="combinedHipCirc">--</strong></p>
 </div>
 
-<p style="font-size:12px;color:#777">
-All values are approximate estimates, not verified body measurements.
+<p class="small-note">
+All combined values are approximate camera-based estimates. They are not verified body measurements or medical results.
 </p>
 
 <button onclick="downloadReport()">Download Combined Report</button>
 </section>
-
-
-<div class="result">
-  <label for="knownHeight">Your actual height (cm) – Calibration</label>
-  <input id="knownHeight" type="number" min="100" max="230"
-    placeholder="Example: 175"
-    style="width:100%;padding:12px;margin-top:8px;border:1px solid #ccc;border-radius:8px">
-
-  <p>Height Reference: <strong id="height">Not calibrated</strong></p>
-  <p>Shoulder Width: <strong id="shoulder">Waiting for scan</strong></p>
-  <p>Waist Width (estimated): <strong id="waist">Waiting for scan</strong></p>
-  <p>Hip Width: <strong id="hip">Waiting for scan</strong></p>
-  <p>Body Proportions: <strong id="proportions">Not available</strong></p>
-</div>
-
-<p style="font-size:12px;color:#667">
-  Measurements are approximate estimates, not clinical or tailoring measurements.
-</p>
-
-<button onclick="downloadReport()">Download Report</button>
-</section>
-
 
 </main>
 
@@ -220,230 +193,82 @@ All values are approximate estimates, not verified body measurements.
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
 <script>
-let cameraStream=null;
-let startingCamera=false;
-let pose=null;
-let lastScan=null;
-let animationId=null;
-let latestPose=null;
- 
-let frontScan=null;
-let sideScan=null;
+let cameraStream = null;
+let startingCamera = false;
+let pose = null;
+let lastScan = null;
+let latestPose = null;
+let animationId = null;
+let processingFrame = false;
+
+let frontScan = null;
+let sideScan = null;
 let autoScanActive = false;
 let stableFrames = 0;
-let scanCountdown = 5;
-let countdownTimer = null;
 
+const video = document.getElementById("camera");
+const overlay = document.getElementById("overlay");
+const ctx = overlay.getContext("2d");
 
-
-function startAutoScan(){
-
-  if(!cameraStream){
-    document.getElementById("autoScanStatus").textContent =
-      "Please start the camera first.";
-    return;
-  }
-
-  if(autoScanActive) return;
-
-  autoScanActive = true;
-  stableFrames = 0;
-  scanCountdown = 5;
-
-  const previousScan = lastScan;
-
-  const button = document.getElementById("autoScanButton");
-  const countdown = document.getElementById("autoCountdown");
-  const status = document.getElementById("autoScanStatus");
-  const instruction = document.getElementById("autoScanInstruction");
-
-  button.disabled = true;
-
-  status.textContent = "Get ready! Automatic scan starting...";
-  instruction.textContent =
-    "Stand straight and keep your full body visible.";
-
-  countdown.textContent = scanCountdown;
-
-  if(countdownTimer){
-    clearInterval(countdownTimer);
-  }
-
-  countdownTimer = setInterval(() => {
-
-    scanCountdown--;
-
-    if(scanCountdown > 0){
-      countdown.textContent = scanCountdown;
-      status.textContent = "Get ready! Scanning in...";
-      return;
-    }
-
-    clearInterval(countdownTimer);
-    countdownTimer = null;
-
-    countdown.textContent = "Scanning...";
-    status.textContent = "AI Body Scan in progress...";
-
-    try {
-      scanBody();
-
-      if(lastScan && lastScan !== previousScan && lastScan.success === true){
-
-        status.textContent = "Automatic scan completed successfully!";
-        instruction.textContent =
-          "Your new body scan results are ready.";
-        countdown.textContent = "Completed";
-
-      } else {
-
-        status.textContent =
-          "Scan could not complete. Check camera and height calibration.";
-        instruction.textContent =
-          "Make sure your full body is visible and try again.";
-        countdown.textContent = "Failed";
-      }
-
-    } catch(error) {
-
-      console.error("Automatic scan error:", error);
-
-      status.textContent = "Scan Error: " + error.message;
-      countdown.textContent = "Failed";
-
-    } finally {
-
-      autoScanActive = false;
-      button.disabled = false;
-
-    }
-
-  }, 1000);
+function setText(id, value){
+ const element = document.getElementById(id);
+ if(element) element.textContent = value;
 }
 
-
-
-function captureView(view){
-
- if(!latestPose){
-  document.getElementById("status").textContent =
-   "Please start camera and wait until your body is detected.";
-  return;
+function getHeight(){
+ const height = Number(document.getElementById("knownHeight").value);
+ if(!height || height < 100 || height > 230){
+  setText("status","Enter your actual height between 100 and 230 cm.");
+  return null;
  }
-
- const p=latestPose;
-
- // Check only the landmarks needed for this scan.
- const required = view === "front"
-  ? [11,12,23,24]
-  : [11,12,23,24];
-
- for(const i of required){
-  if(!p[i] || (p[i].visibility ?? 0) < 0.4){
-   document.getElementById("status").textContent =
-    "Body not clearly detected. Face the camera and try again.";
-   return;
-  }
- }
-
- const measurement = {
-  shoulderWidth: Math.abs(p[11].x-p[12].x),
-  hipWidth: Math.abs(p[23].x-p[24].x),
-  bodyHeight: Math.abs(
-   ((p[27].y+p[28].y)/2)-p[0].y
-  ),
-  landmarks: p.map(point => ({
-   x: point.x,
-   y: point.y,
-   visibility: point.visibility ?? 0
-  }))
- };
-
- if(view === "front"){
-  frontScan = measurement;
-  document.getElementById("frontStatus").textContent =
-   "Captured successfully";
- } else {
-  sideScan = measurement;
-  document.getElementById("sideStatus").textContent =
-   "Captured successfully";
- }
-
- if(frontScan && sideScan){
-  document.getElementById("combinedStatus").textContent =
-   "Both views captured – Ready for analysis";
- } else {
-  document.getElementById("combinedStatus").textContent =
-   "Waiting for second view";
- }
-
- document.getElementById("status").textContent =
-  view.toUpperCase() + " VIEW captured successfully.";
+ return height;
 }
 
+function requiredBodyVisible(p){
+ const required = [0,11,12,23,24,27,28];
+ return required.every(i =>
+  p[i] && (p[i].visibility ?? 0) >= 0.5
+ );
+}
 
-const video=document.getElementById("camera");
-const overlay=document.getElementById("overlay");
-const ctx=overlay.getContext("2d");
- function checkBodyVisibility(p){
-
+function checkBodyVisibility(p){
  const parts = [
-  {name:"Left Shoulder", id:11},
-  {name:"Right Shoulder", id:12},
-  {name:"Left Elbow", id:13},
-  {name:"Right Elbow", id:14},
-  {name:"Left Wrist", id:15},
-  {name:"Right Wrist", id:16},
-  {name:"Left Hip", id:23},
-  {name:"Right Hip", id:24},
-  {name:"Left Knee", id:25},
-  {name:"Right Knee", id:26},
-  {name:"Left Ankle", id:27},
-  {name:"Right Ankle", id:28}
+  ["Left Shoulder",11],["Right Shoulder",12],
+  ["Left Elbow",13],["Right Elbow",14],
+  ["Left Wrist",15],["Right Wrist",16],
+  ["Left Hip",23],["Right Hip",24],
+  ["Left Knee",25],["Right Knee",26],
+  ["Left Ankle",27],["Right Ankle",28]
  ];
 
- const missing=[];
- const partial=[];
+ const missing = parts
+  .filter(part => !p[part[1]] || (p[part[1]].visibility ?? 0) < 0.5)
+  .map(part => part[0]);
 
- for(const part of parts){
+ setText("missingParts",missing.length ? missing.join(", ") : "None");
+ setText("visibility",missing.length ? "Partially detected" : "Detected");
+ setText("visibilityDetails",missing.length ? "Incomplete – Adjust camera position" : "All key body parts detected");
 
-  const point=p[part.id];
+ return missing.length === 0;
+}
 
-  if(!point || (point.visibility ?? 0)<0.5){
-   missing.push(part.name);
-  }
-  else if(point.visibility<0.75){
-   partial.push(part.name);
-  }
- }
+function analyzePosture(p){
+ const left = p[11];
+ const right = p[12];
 
- document.getElementById("missingParts").textContent =
-  missing.length ? missing.join(", ") : "None";
+ if(!left || !right) return "Not analyzed";
 
- if(missing.length===0 && partial.length===0){
-  document.getElementById("visibilityDetails").textContent =
-   "All key body parts clearly visible";
- }
- else if(missing.length===0){
-  document.getElementById("visibilityDetails").textContent =
-   "Detected – Some parts need better visibility";
- }
- else{
-  document.getElementById("visibilityDetails").textContent =
-   "Incomplete – Adjust camera position";
- }
+ const difference = Math.abs(left.y-right.y);
 
- document.getElementById("visibility").textContent =
-  missing.length===0 ? "Detected" : "Partially detected";
-
- return missing.length===0;
+ if(difference > 0.06) return "Shoulder imbalance detected";
+ return "Shoulders approximately level";
 }
 
 async function initializePose(){
- if(pose)return;
+ if(pose) return;
 
- pose=new Pose({
-  locateFile:(file)=>
+ pose = new Pose({
+  locateFile: file =>
    `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
  });
 
@@ -459,305 +284,436 @@ async function initializePose(){
   ctx.clearRect(0,0,overlay.width,overlay.height);
 
   if(!results.poseLandmarks){
+   latestPose = null;
+   stableFrames = 0;
 
- latestPose=null;
+   setText("poseStatus","Searching");
+   setText("visibility","Not detected");
+   setText("visibilityDetails","Searching for body...");
+   setText("missingParts","Waiting for detection");
+   setText("posture","Not analyzed");
+   setText("landmarks","0");
+   return;
+  }
 
- document.getElementById("visibility").textContent =
-  "Not detected";
+  latestPose = results.poseLandmarks;
 
- document.getElementById("visibilityDetails").textContent =
-  "Searching for body...";
+  drawConnectors(ctx,latestPose,POSE_CONNECTIONS,{
+   color:"#00ff88",
+   lineWidth:4
+  });
 
- document.getElementById("missingParts").textContent =
-  "Waiting for detection";
+  drawLandmarks(ctx,latestPose,{
+   color:"#ff3030",
+   lineWidth:2,
+   radius:4
+  });
 
- document.getElementById("poseStatus").textContent =
-  "Searching";
+  const visible = checkBodyVisibility(latestPose);
 
- document.getElementById("posture").textContent =
-  "Not analyzed";
+  if(visible) stableFrames++;
+  else stableFrames = 0;
 
- document.getElementById("landmarks").textContent="0";
-
- document.getElementById("status").textContent =
-  "No body detected. Stand in front of the camera.";
-
- return;
-}
-  latestPose=results.poseLandmarks;
-
-  drawConnectors(
-   ctx,
-   results.poseLandmarks,
-   POSE_CONNECTIONS,
-   {color:"#00ff88",lineWidth:4}
-  );
-
-  drawLandmarks(
-   ctx,
-   results.poseLandmarks,
-   {color:"#ff3030",lineWidth:2,radius:4}
-  );
-
- checkBodyVisibility(results.poseLandmarks);
-  document.getElementById("landmarks").textContent=
-   results.poseLandmarks.length;
-
-  document.getElementById("poseStatus").textContent="Live Tracking";
-  document.getElementById("posture").textContent=
-   analyzePosture(results.poseLandmarks);
+  setText("landmarks",latestPose.length);
+  setText("poseStatus","Live Tracking");
+  setText("posture",analyzePosture(latestPose));
  });
 }
 
-function analyzePosture(p){
- const left=p[11];
- const right=p[12];
-
- if(!left || !right)return "Not analyzed";
-
- const shoulderDifference=Math.abs(left.y-right.y);
-
- if(shoulderDifference>0.06){
-  return "Shoulder imbalance detected";
- }
-
- return "Shoulders approximately level";
-}
-
 async function startCamera(){
- if(startingCamera)return;
+ if(startingCamera || cameraStream) return;
 
- startingCamera=true;
- const start=document.getElementById("startButton");
- const status=document.getElementById("status");
+ startingCamera = true;
+ const startButton = document.getElementById("startButton");
+ startButton.disabled = true;
 
- start.disabled=true;
- status.textContent="Connecting camera...";
- document.getElementById("cameraStatus").textContent =
- "Requesting permission...";
+ setText("status","Connecting camera...");
+ setText("cameraStatus","Requesting permission...");
 
  try{
   await initializePose();
 
- try {
- cameraStream = await navigator.mediaDevices.getUserMedia({
-  video: {
-   facingMode: { ideal: "user" },
-   width: { ideal: 1280 },
-   height: { ideal: 720 }
-  },
-  audio: false
- });
-} catch (firstError) {
- console.warn("Trying default camera settings:", firstError);
+  try{
+   cameraStream = await navigator.mediaDevices.getUserMedia({
+    video:{
+     facingMode:{ideal:"user"},
+     width:{ideal:1280},
+     height:{ideal:720}
+    },
+    audio:false
+   });
+  }catch(firstError){
+   cameraStream = await navigator.mediaDevices.getUserMedia({
+    video:true,
+    audio:false
+   });
+  }
 
- cameraStream = await navigator.mediaDevices.getUserMedia({
-  video: true,
-  audio: false
- });
-}
-  video.srcObject=cameraStream;
-  video.style.display="block";
-
-  document.getElementById("cameraMessage").style.display="none";
+  video.srcObject = cameraStream;
+  video.style.display = "block";
+  document.getElementById("cameraMessage").style.display = "none";
 
   await video.play();
 
-  overlay.width=video.videoWidth;
-  overlay.height=video.videoHeight;
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
 
-  document.getElementById("stopButton").disabled=false;
-  document.getElementById("scanButton").disabled=false;
+  document.getElementById("stopButton").disabled = false;
+  document.getElementById("scanButton").disabled = false;
 
- status.textContent =
- "Camera connected. Waiting for body detection...";
-
-document.getElementById("cameraStatus").textContent =
- "Camera connected";
-
-document.getElementById("poseStatus").textContent =
- "Searching for body";
+  setText("cameraStatus","Camera connected");
+  setText("status","Camera connected. Waiting for body detection...");
 
   detectFrame();
 
  }catch(error){
   console.error(error);
-  status.textContent="Camera Error: "+error.message;
-  document.getElementById("cameraStatus").textContent =
- "Camera error: "+error.name;
-  start.disabled=false;
+  setText("status","Camera Error: " + error.message);
+  setText("cameraStatus","Camera error: " + error.name);
   stopCamera();
-  document.getElementById("cameraStatus").textContent =
- "Stopped";
-
-document.getElementById("poseStatus").textContent =
- "Waiting";
-
-document.getElementById("visibilityDetails").textContent =
- "Waiting for camera";
  }finally{
-  startingCamera=false;
+  startingCamera = false;
+  if(!cameraStream) startButton.disabled = false;
  }
 }
 
 async function detectFrame(){
- if(!cameraStream)return;
+ if(!cameraStream || processingFrame) return;
 
- if(video.readyState>=2){
-  await pose.send({image:video});
+ if(video.readyState >= 2){
+  processingFrame = true;
+  try{
+   await pose.send({image:video});
+  }catch(error){
+   console.error("Pose processing error:",error);
+  }finally{
+   processingFrame = false;
+  }
  }
 
  if(cameraStream){
-  animationId=requestAnimationFrame(detectFrame);
+  animationId = requestAnimationFrame(detectFrame);
  }
 }
 
 function stopCamera(){
  if(animationId){
   cancelAnimationFrame(animationId);
-  animationId=null;
+  animationId = null;
  }
 
  if(cameraStream){
-  cameraStream.getTracks().forEach(t=>t.stop());
-  cameraStream=null;
+  cameraStream.getTracks().forEach(track=>track.stop());
+  cameraStream = null;
+ }
+
+ if(countdownTimer){
+  clearInterval(countdownTimer);
+  countdownTimer = null;
  }
 
  video.pause();
- video.srcObject=null;
- video.style.display="none";
-
+ video.srcObject = null;
+ video.style.display = "none";
  ctx.clearRect(0,0,overlay.width,overlay.height);
 
- document.getElementById("cameraMessage").style.display="block";
- document.getElementById("startButton").disabled=false;
- document.getElementById("stopButton").disabled=true;
- document.getElementById("scanButton").disabled=true;
- document.getElementById("status").textContent="Camera stopped.";
+ latestPose = null;
+ stableFrames = 0;
+
+ document.getElementById("cameraMessage").style.display = "block";
+ document.getElementById("startButton").disabled = false;
+ document.getElementById("stopButton").disabled = true;
+ document.getElementById("scanButton").disabled = true;
+
+ setText("cameraStatus","Stopped");
+ setText("status","Camera stopped.");
 }
 
-
-function scanBody(){
- if(!latestPose){
-  document.getElementById("status").textContent =
-   "No body detected. Stand fully in front of camera.";
-  return;
+function getMeasurement(view){
+ if(!latestPose || !requiredBodyVisible(latestPose)){
+  setText("status","Full body is not clearly visible. Adjust your position.");
+  return null;
  }
 
- const p=latestPose;
- const knownHeight=Number(
-  document.getElementById("knownHeight").value
+ const height = getHeight();
+ if(!height) return null;
+
+ const p = latestPose;
+
+ const bodyPixels = Math.abs(
+  ((p[27].y+p[28].y)/2-p[0].y) * video.videoHeight
  );
 
- if(!knownHeight || knownHeight<100 || knownHeight>230){
-  document.getElementById("status").textContent =
-   "Enter your actual height between 100 and 230 cm.";
-  return;
+ const shoulderPixels = Math.abs(p[11].x-p[12].x) * video.videoWidth;
+ const hipPixels = Math.abs(p[23].x-p[24].x) * video.videoWidth;
+
+ if(bodyPixels < 100 || shoulderPixels < 5 || hipPixels < 5){
+  setText("status","Invalid scan. Please stand farther from the camera and try again.");
+  return null;
  }
 
- // MediaPipe landmark confidence check
- const required=[0,11,12,23,24,27,28];
+ const cmPerPixel = height/bodyPixels;
 
- for(const i of required){
-  if(!p[i] || (p[i].visibility ?? 0)<0.5){
-   document.getElementById("status").textContent =
-    "Full body not visible. Adjust your camera position.";
-   return;
-  }
- }
-
- // Distance between landmarks in normalized image coordinates
- function distance(a,b){
-  const dx=(p[a].x-p[b].x)*video.videoWidth;
-  const dy=(p[a].y-p[b].y)*video.videoHeight;
-  return Math.sqrt(dx*dx+dy*dy);
- }
-
- const shoulderPx=distance(11,12);
- const hipPx=distance(23,24);
-
- // Approximate visible body length: nose to ankle midpoint
- const ankleY=(p[27].y+p[28].y)/2;
- const bodyPx=Math.abs(ankleY-p[0].y)*video.videoHeight;
-
- if(bodyPx<100 || shoulderPx<10 || hipPx<10){
-  document.getElementById("status").textContent =
-   "Invalid pose measurements. Please reposition.";
-  return;
- }
-
- // Calibration based on entered actual height
- const cmPerPixel=knownHeight/bodyPx;
-
- const shoulderCm=shoulderPx*cmPerPixel;
- const hipCm=hipPx*cmPerPixel;
-
- // Waist is only a rough interpolated width proxy,
- // not a directly measured circumference.
- const waistCm=((shoulderCm+hipCm)/2)*0.85;
-
- const measurements={
-  height:knownHeight,
-  shoulder:shoulderCm,
-  waist:waistCm,
-  hip:hipCm
- };
-
- document.getElementById("height").textContent =
-  knownHeight+" cm (user calibrated)";
-
- document.getElementById("shoulder").textContent =
-  shoulderCm.toFixed(1)+" cm (estimated)";
-
- document.getElementById("waist").textContent =
-  waistCm.toFixed(1)+" cm (rough estimate)";
-
- document.getElementById("hip").textContent =
-  hipCm.toFixed(1)+" cm (estimated)";
-
- document.getElementById("proportions").textContent =
-  "Shoulder/Hip ratio: "+
-  (shoulderCm/hipCm).toFixed(2);
-
- lastScan={
-  success:true,
-  detected:true,
-  landmarks:p.length,
-  posture:analyzePosture(p),
-  measurements:measurements,
-  measurementType:"Approximate front-view estimates",
-  points:p.map(point=>({
+ return {
+  view:view,
+  height:height,
+  shoulder:shoulderPixels*cmPerPixel,
+  hip:hipPixels*cmPerPixel,
+  bodyPixels:bodyPixels,
+  capturedAt:new Date().toISOString(),
+  landmarks:p.map(point=>({
    x:Number(point.x.toFixed(4)),
    y:Number(point.y.toFixed(4)),
-   visibility:Number((point.visibility??0).toFixed(4))
+   visibility:Number((point.visibility ?? 0).toFixed(4))
   }))
  };
+}
 
- document.getElementById("poseStatus").textContent="Completed";
- document.getElementById("visibility").textContent="Detected";
- document.getElementById("landmarks").textContent=p.length;
- document.getElementById("posture").textContent=lastScan.posture;
- document.getElementById("status").textContent =
-  "Body measurement scan completed!";
+function captureView(view){
+ if(!cameraStream){
+  setText("status","Please start the camera first.");
+  return false;
+ }
+
+ const measurement = getMeasurement(view);
+ if(!measurement) return false;
+
+ if(view === "front"){
+  frontScan = measurement;
+  setText("frontStatus","Captured successfully");
+ }else{
+  sideScan = measurement;
+  setText("sideStatus","Captured successfully");
+ }
+
+ updateCombinedMeasurements();
+
+ setText("status",view.toUpperCase()+" VIEW captured successfully.");
+ return true;
+}
+
+function scanBody(){
+ if(!cameraStream){
+  setText("status","Start the camera first.");
+  return;
+ }
+
+ const measurement = getMeasurement("front");
+ if(!measurement) return;
+
+ lastScan = {
+  success:true,
+  detected:true,
+  posture:analyzePosture(latestPose),
+  measurements:measurement,
+  measurementType:"Approximate front-view estimates"
+ };
+
+ setText("height",measurement.height+" cm (user calibrated)");
+ setText("shoulder",measurement.shoulder.toFixed(1)+" cm (estimated)");
+ setText("hip",measurement.hip.toFixed(1)+" cm (estimated)");
+ setText("waist",(((measurement.shoulder+measurement.hip)/2)*0.85).toFixed(1)+" cm (rough estimate)");
+ setText("proportions",(measurement.shoulder/measurement.hip).toFixed(2));
+ setText("status","Front-view body scan completed!");
+}
+
+function ellipseCircumference(width,depth){
+ const a = width/2;
+ const b = depth/2;
+
+ if(!a || !b) return 0;
+
+ const h = Math.pow(a-b,2)/Math.pow(a+b,2);
+
+ return Math.PI*(a+b)*(1+(3*h)/(10+Math.sqrt(4-3*h)));
+}
+
+function updateCombinedMeasurements(){
+ if(!frontScan || !sideScan){
+  setText("combinedStatus","Waiting for second view");
+  return;
+ }
+
+ const shoulder = frontScan.shoulder;
+ const hip = frontScan.hip;
+
+ const chest = shoulder*0.90;
+ const waist = ((shoulder+hip)/2)*0.85;
+
+ const chestDepth = sideScan.shoulder;
+ const waistDepth = ((sideScan.shoulder+sideScan.hip)/2)*0.85;
+ const hipDepth = sideScan.hip;
+
+ setText("combinedCalibration","Height: "+frontScan.height+" cm");
+ setText("combinedShoulder",shoulder.toFixed(1)+" cm (estimated)");
+ setText("combinedChest",chest.toFixed(1)+" cm (estimated)");
+ setText("combinedWaist",waist.toFixed(1)+" cm (estimated)");
+ setText("combinedHip",hip.toFixed(1)+" cm (estimated)");
+
+ setText("combinedChestDepth",chestDepth.toFixed(1)+" cm (rough side-view proxy)");
+ setText("combinedWaistDepth",waistDepth.toFixed(1)+" cm (rough side-view proxy)");
+ setText("combinedHipDepth",hipDepth.toFixed(1)+" cm (rough side-view proxy)");
+
+ setText("combinedChestCirc",ellipseCircumference(chest,chestDepth).toFixed(1)+" cm (rough estimate)");
+ setText("combinedWaistCirc",ellipseCircumference(waist,waistDepth).toFixed(1)+" cm (rough estimate)");
+ setText("combinedHipCirc",ellipseCircumference(hip,hipDepth).toFixed(1)+" cm (rough estimate)");
+
+ setText("combinedStatus","Both views captured – Combined estimates ready");
+}
+
+let countdownTimer = null;
+
+function wait(ms){
+ return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function waitForStableBody(seconds){
+ const start = Date.now();
+ const limit = seconds*1000;
+
+ while(Date.now()-start < limit){
+  if(!autoScanActive || !cameraStream) return false;
+
+  if(latestPose && requiredBodyVisible(latestPose) && stableFrames >= 10){
+   return true;
+  }
+
+  setText("autoCountdown","Waiting");
+  await wait(300);
+ }
+
+ return false;
+}
+
+async function runCountdown(seconds){
+ for(let i=seconds;i>0;i--){
+  if(!autoScanActive || !cameraStream) return false;
+  setText("autoCountdown",i);
+  await wait(1000);
+ }
+ setText("autoCountdown","Scanning...");
+ return true;
+}
+
+async function startAutoScan(){
+ if(!cameraStream){
+  setText("autoScanStatus","Please start the camera first.");
+  return;
+ }
+
+ if(autoScanActive) return;
+
+ if(!getHeight()) return;
+
+ autoScanActive = true;
+ const button = document.getElementById("autoScanButton");
+ button.disabled = true;
+
+ frontScan = null;
+ sideScan = null;
+
+ setText("frontStatus","Pending");
+ setText("sideStatus","Pending");
+ setText("combinedStatus","Not ready");
+
+ try{
+  setText("autoScanStatus","Step 1: Preparing front-view scan.");
+  setText("autoScanInstruction","Face the camera. Stand straight with your full body visible.");
+
+  const frontReady = await waitForStableBody(300);
+
+  if(!frontReady){
+   throw new Error("Front view body detection timed out. Make sure your full body is visible.");
+  }
+
+  setText("autoScanStatus","Front view detected. Get ready.");
+  if(!await runCountdown(5)) throw new Error("Scan stopped.");
+
+  if(!captureView("front")){
+   throw new Error("Front view capture failed. Please try again.");
+  }
+
+  setText("autoScanStatus","Front view completed.");
+  setText("autoScanInstruction","Now turn sideways (90 degrees) while keeping your full body visible.");
+
+  await wait(3000);
+
+  setText("autoScanStatus","Step 2: Waiting for side-view detection.");
+
+  const sideReady = await waitForStableBody(300);
+
+  if(!sideReady){
+   throw new Error("Side view detection timed out. Turn sideways and keep your full body visible.");
+  }
+
+  setText("autoScanStatus","Side view detected. Get ready.");
+  if(!await runCountdown(5)) throw new Error("Scan stopped.");
+
+  if(!captureView("side")){
+   throw new Error("Side view capture failed. Please try again.");
+  }
+
+  updateCombinedMeasurements();
+
+  setText("autoScanStatus","Automatic front and side scan completed successfully!");
+  setText("autoScanInstruction","Both views have been captured. Review your combined estimates.");
+  setText("autoCountdown","Completed");
+  setText("status","Automatic dual-view scan completed!");
+
+ }catch(error){
+  console.error("Automatic scan:",error);
+  setText("autoScanStatus",error.message);
+  setText("autoCountdown","Failed");
+ }finally{
+  autoScanActive = false;
+  button.disabled = false;
+ }
 }
 
 function downloadReport(){
- if(!lastScan){
-  alert("Please complete a scan first.");
+ if(!frontScan || !sideScan){
+  alert("Please complete both Front View and Side View scans first.");
   return;
  }
 
- const blob=new Blob(
-  [JSON.stringify(lastScan,null,2)],
+ const report = {
+  application:"AI Body Scanner",
+  reportDate:new Date().toISOString(),
+  calibration:{
+   enteredHeightCm:frontScan.height
+  },
+  frontView:frontScan,
+  sideView:sideScan,
+  combinedEstimates:{
+   shoulderWidthCm:frontScan.shoulder,
+   chestWidthCm:frontScan.shoulder*0.90,
+   waistWidthCm:((frontScan.shoulder+frontScan.hip)/2)*0.85,
+   hipWidthCm:frontScan.hip,
+   chestDepthCm:sideScan.shoulder,
+   waistDepthCm:((sideScan.shoulder+sideScan.hip)/2)*0.85,
+   hipDepthCm:sideScan.hip,
+   chestCircumferenceCm:ellipseCircumference(frontScan.shoulder*0.90,sideScan.shoulder),
+   waistCircumferenceCm:ellipseCircumference(
+    ((frontScan.shoulder+frontScan.hip)/2)*0.85,
+    ((sideScan.shoulder+sideScan.hip)/2)*0.85
+   ),
+   hipCircumferenceCm:ellipseCircumference(frontScan.hip,sideScan.hip)
+  },
+  disclaimer:"Approximate camera-based estimates only. Not medical or verified body measurements."
+ };
+
+ const blob = new Blob(
+  [JSON.stringify(report,null,2)],
   {type:"application/json"}
  );
 
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- a.href=url;
- a.download="body-scan-report.json";
- a.click();
- URL.revokeObjectURL(url);
+ const url = URL.createObjectURL(blob);
+ const link = document.createElement("a");
+ link.href = url;
+ link.download = "combined-body-scan-report.json";
+ link.click();
+
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 </script>
 

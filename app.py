@@ -164,6 +164,7 @@ def analyze_posture(points, view):
 # BODY MEASUREMENTS
 # ---------------------------------
 
+
 def analyze_measurements(points, width, height, known_height_cm):
 
     left_shoulder = points[11]
@@ -176,17 +177,11 @@ def analyze_measurements(points, width, height, known_height_cm):
     right_ankle = points[28]
 
     shoulder_pixels = get_distance(
-        left_shoulder,
-        right_shoulder,
-        width,
-        height
+        left_shoulder, right_shoulder, width, height
     )
 
     hip_pixels = get_distance(
-        left_hip,
-        right_hip,
-        width,
-        height
+        left_hip, right_hip, width, height
     )
 
     ankle_center_y = (
@@ -208,7 +203,6 @@ def analyze_measurements(points, width, height, known_height_cm):
     }
 
     if known_height_cm is not None:
-
         try:
             known_height_cm = float(known_height_cm)
 
@@ -235,9 +229,7 @@ def analyze_measurements(points, width, height, known_height_cm):
                 "shoulder_width": round(
                     estimated_shoulder, 1
                 ),
-                "hip_width": round(
-                    estimated_hip, 1
-                ),
+                "hip_width": round(estimated_hip, 1),
                 "proportions": {
                     "shoulder_to_hip_ratio": round(
                         estimated_shoulder /
@@ -247,10 +239,13 @@ def analyze_measurements(points, width, height, known_height_cm):
                 "calibrated": True,
                 "measurement_note": (
                     "Approximate image-based estimates. "
-                    "Accuracy depends on full-body visibility, "
-                    "camera angle and calibration."
+                    "Accuracy depends on camera angle "
+                    "and calibration."
                 )
             }
+
+        except (ValueError, TypeError, ZeroDivisionError):
+            return result
 
     return result
 

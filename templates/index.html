@@ -309,11 +309,13 @@ async function initializePose(){
    radius:4
   });
 
-  const visible = checkBodyVisibility(latestPose);
+ checkBodyVisibility(latestPose);
 
-  if(visible) stableFrames++;
-  else stableFrames = 0;
-
+if(requiredBodyVisible(latestPose)){
+    stableFrames++;
+}else{
+    stableFrames = 0;
+}
   setText("landmarks",latestPose.length);
   setText("poseStatus","Live Tracking");
   setText("posture",analyzePosture(latestPose));
